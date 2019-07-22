@@ -1,10 +1,10 @@
-#ifndef STEPPER_MOTOR_H
-#define STEPPER_MOTOR_H
+#ifndef MOTOR_H
+#define MOTOR_H
 
-class StepperMotor{
+class Motor{
   public:
-    StepperMotor();
-    StepperMotor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed, int minSpeed, int accelRate, bool enableHIGH, bool motorInvert);
+    Motor();
+    Motor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed, int minSpeed, int accelRate, bool enableHIGH, bool motorInvert);
     void move(int stepsToMove);
     bool step(unsigned int elapsedMicros, bool contMove);
  
@@ -29,7 +29,7 @@ class StepperMotor{
     void updateAccelParams();
 };
 
-StepperMotor::StepperMotor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed,
+Motor::Motor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed,
       int minSpeed, int accelRate, bool enableHIGH, bool motorInvert){
   this->stepPin = stepPin;
   this->dirPin = dirPin;
@@ -48,14 +48,14 @@ StepperMotor::StepperMotor(int stepPin, volatile uint8_t *stepPort, uint8_t step
 }
 
 //Needs to be called in setup to initialise pins
-void StepperMotor::begin(){
+void Motor::begin(){
   pinMode(enablePin,OUTPUT);
   pinMode(stepPin,OUTPUT);
   pinMode(dirPin,OUTPUT);
   digitalWrite(enablePin,enableHIGH);
 }
 
-bool StepperMotor::step(unsigned int elapsedMicros, bool contMove){
+bool Motor::step(unsigned int elapsedMicros, bool contMove){
   bool stepped = false;
   stepRunTime += elapsedMicros;
   if (steps > 0){
@@ -80,7 +80,7 @@ bool StepperMotor::step(unsigned int elapsedMicros, bool contMove){
   return stepped;
 }
 
-void StepperMotor::updateAccel(){
+void Motor::updateAccel(){
 
   //If not going to reach top speed
   if((stepsTarget-accelLength)<0){
@@ -103,7 +103,7 @@ void StepperMotor::updateAccel(){
   currentStepDelayDuration = (long)1000000 / (long)currentSpeed;    
 }
 
-void StepperMotor::move(int stepsToMove){
+void Motor::move(int stepsToMove){
   steps = stepsTarget = abs(stepsToMove);
   
   //Set Direction of Motor
@@ -112,25 +112,25 @@ void StepperMotor::move(int stepsToMove){
   currentSpeed = minSpeed;
 }
 
-void StepperMotor::updateAccelParams(){
+void Motor::updateAccelParams(){
   accelLength = (speed-minSpeed)/accelRate;
   stepsTarget = steps;
 }
 
 //setters
-void StepperMotor::setSpeed(int speed){
+void Motor::setSpeed(int speed){
   //speed in steps per second
   this->speed = speed;
   updateAccelParams();
 }
 
-void StepperMotor::setMinSpeed(int minSpeed){
+void Motor::setMinSpeed(int minSpeed){
   //speed in steps per second
   this->minSpeed = minSpeed;
   updateAccelParams();
 }
 
-void StepperMotor::setAccelRate(int rate){
+void Motor::setAccelRate(int rate){
   accelRate = rate;
   updateAccelParams();
 }

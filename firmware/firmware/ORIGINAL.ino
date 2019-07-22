@@ -6,29 +6,6 @@
 // NOTE: All Rights Reserved, 2019, Queen's University Belfast
 //------------------------------------------------------------------------------------------------------------------
 
-//Pin Definitions
-#define RightMotorDirection 24 //DIR Input on Board
-#define LeftMotorDirection 22 //DIR Input on Board
-
-#define RightMotorSleep 28 //SLP Input on Board
-#define LeftMotorSleep 26  //SLP Input on Board
-
-#define RightMotorFault 32 //FLT Pin on Board
-#define LeftMotorFault 30  //FLT Pin on Board
-
-#define RightMotorEnergise 36 //Relay Isolating Supply to Right Motor
-#define LeftMotorEnergise 34  //Relay Isolating Supply to Left Motor
-
-#define RightMotorSpeed 3 //PWM Input on Board
-#define LeftMotorSpeed 5 //PWM Input on Board
-
-#define RightMotorCurrent 1 //CS Pin on Board
-#define LeftMotorCurrent 0  //CS Pin on Board
-
-#define MotorBrakes 40 //Relay to apply mechanical brake
-#define WarningLight 38 //Relay to apply mechanical brake
-#define Reset 42 //Pin attached to reset for instrinsic program reset
-#define BatteryIndication 2 //Voltage Sensor
 
 //Receive Data Variables
 float maxCurrent = 30.00;
