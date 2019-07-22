@@ -3,7 +3,7 @@
 // AUTH: Ryan McCartney
 // DATE: 14th January 2019
 // DESC: Recieves serial communications containing control commands for an electric wheelchair
-// NOTE: All Rights Reserved, 2018, Queen's University Belfast
+// NOTE: All Rights Reserved, 2019, Queen's University Belfast
 //------------------------------------------------------------------------------------------------------------------
 
 //Pin Definitions
@@ -20,7 +20,7 @@
 #define LeftMotorEnergise 34  //Relay Isolating Supply to Left Motor
 
 #define RightMotorSpeed 3 //PWM Input on Board
-#define LeftMotorSpeed 2 //PWM Input on Board
+#define LeftMotorSpeed 5 //PWM Input on Board
 
 #define RightMotorCurrent 1 //CS Pin on Board
 #define LeftMotorCurrent 0  //CS Pin on Board
@@ -450,7 +450,7 @@ void sendData() {
 
    readInputs();
    
-   if(rightMotorFault == 0){
+   /*if(rightMotorFault == 0){
       statusMessage = "ERROR = Right motor has developed a fault.";
       stopWheelchair();
       
@@ -458,7 +458,7 @@ void sendData() {
    else if(leftMotorFault == 0){
       statusMessage = "ERROR = Left motor has developed a fault.";
       stopWheelchair();
-   }
+   }*/
 
    //Send Serial Information
    Serial.print(leftMotorCurrent,2);
