@@ -19,68 +19,103 @@ char instruction[INST_ARRAY_LEN];
 int instIndex = 0;
 
 //Declare Motor objects
-Motor leftMotor = Motor();
-Motor rightMotor = Motor();
+Motor leftMotor = Motor(LEFT_MOTOR_SLLEP, LEFT_MOTOR_FAULT, LEFT_MOTOR_SPEED, LEFT_MOTOR_DIR, LEFT_MOTOR_CURRENT, LEFT_MOTOR_ENERGISE);
+Motor rightMotor = Motor(RIGHT_MOTOR_SLLEP, RIGHT_MOTOR_FAULT, RIGHT_MOTOR_SPEED, RIGHT_MOTOR_DIR, RIGHT_MOTOR_CURRENT, RIGHT_MOTOR_ENERGISE);
 
-void leftMotorPhaseA(void){
+//Iniitialise Encoder Variables
+volatile int leftPulses = 0;
+volatile int rightPulses = 0;
+double encoderMultiplier = 0.00;
 
+//------------------------------------------------------------------------------------------------------------------
+//Encoder Interupts
+//------------------------------------------------------------------------------------------------------------------
+void rightEncoderPulse(){
+  if((digitalRead(rightEncoderA) == HIGH)&&(digitalRead(rightEncoderB) == LOW)){
+    //Moving Forwards
+    rightPulses++;
+  }
+  else if((digitalRead(rightEncoderA) == LOW)&&(digitalRead(rightEncoderB) == HIGH)){
+    //Moving Backwards
+    rightPulses--;
+  }
 }
 
-void leftMotorPhaseB(void){
-
+void leftEncoderPulse() {
+    if((digitalRead(leftEncoderA) == HIGH)&&(digitalRead(leftEncoderB) == LOW)){
+    //Moving Forwards
+    leftPulses++;
+  }
+  else if((digitalRead(leftEncoderA) == LOW)&&(digitalRead(leftEncoderB) == HIGH)){
+    //Moving Backwards
+    leftPulses--;
+  }
 }
 
-void rightMotorPhaseA(void){
-
-}
-
-void rightMotorPhaseB(void){
-  
-}
-
-
+//------------------------------------------------------------------------------------------------------------------
+//TIMER INTERUPT ROUTINE
+//------------------------------------------------------------------------------------------------------------------
 bool interruptBusy = false;
 void interrupt(void){
   if(!interruptBusy){
     interruptBusy = true;
-    //handle motor movement by interrupt
-    for (int i = 0; i < TOTAL_JOINTS; i++)
-      joints[i].update(INTERRUPT_TIME);
-      interruptBusy = false;
+    leftMotor.update(INTERRUPT_TIME);
+    rightMotor.update(INTERRUPT_TIME);
+    interruptBusy = false;
   }
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//SETUP FUNCTION
+//------------------------------------------------------------------------------------------------------------------
 void setup() { 
-  for (int i = 0; i < TOTAL_JOINTS; i++)
-    joints[i].begin();
+
+  leftMotor.begin();
+  leftMotor.begin();
    
   //Setup Main Serial
   Serial.begin(BAUD_RATE);
-  Serial.println("INFO: Starting up...");
+  Serial.println("INFO: Wheelchair starting up...");
+
+  //Setup Encoder Pins
+  pinMode(rightEncoderA, INPUT_PULLUP);
+  pinMode(rightEncoderB, INPUT_PULLUP);
+  pinMode(leftEncoderA, INPUT_PULLUP);
+  pinMode(leftEncoderB, INPUT_PULLUP);
   
-  //Setup Hand
-  pinMode(END_EFFECTOR_2, OUTPUT);
-  hand.attach(END_EFFECTOR_2); 
+  //Attach Interupts
+  attachInterrupt(digitalPinToInterrupt(rightEncoderA), rightEncoderPulse, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightEncoderB), rightEncoderPulse, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftEncoderA), leftEncoderPulse, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftEncoderB), leftEncoderPulse, RISING);
 
-  //Setup Tool Communication line
-  Serial1.begin(BAUD_RATE);
-  Serial1.println("INFO: Arm Setup Complete.");
+  //Set Hardware Interupt for EStop
+  pinMode(ESTOP_POWER, OUTPUT);
+  digitalWrite(ESTOP_POWER,HIGH);
+  pinMode(ESTOP, INPUT);
+  attachInterrupt(digitalPinToInterrupt(ESTOP), eStop, FALLING);
 
-  //Load data from EEPROM
-  loadPositions();
+  //Setup Brakes and Light
+  pinMode(WARNING_LIGHT,OUTPUT);
+  pinMode(MOTOR_BRAKES,OUTPUT);
 
-  //set timer interrupt for motor and encoder control
+  //Setup Voltage Sensor
+  pinMode(VOLTAGE_SENSOR, INPUT_PULLUP);
+  
+  //Calculate Distance Constant
+  encoderMultiplier = (ENCODER_DIAMETER*PI)/PULSES_PER_REV;
+     
+  //set timer interrupt for motor control
   Timer1.attachInterrupt(interrupt);
   Timer1.initialize(INTERRUPT_TIME);
   Timer1.start();
 
-  //Set Hardware Interupt for EStop
-  pinMode(ESTOP, INPUT);
-  attachInterrupt(digitalPinToInterrupt(ESTOP), eStop, FALLING);
-  
   Serial.println("INFO: Setup Complete.");
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//MAIN LOOP
+//------------------------------------------------------------------------------------------------------------------
 void loop() {
   readSerial();
   //Send Status Message at Configured Frequency
@@ -89,6 +124,9 @@ void loop() {
   }
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//Read Serial Line
+//------------------------------------------------------------------------------------------------------------------
 void readSerial(){
   if (Serial.available() > 0){
     char nextChar = Serial.read();
@@ -115,6 +153,9 @@ void readSerial(){
   }
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//Process Incstruction
+//------------------------------------------------------------------------------------------------------------------
 void processInstruction(char *input){
   //check first byte
   switch(toLowerCase(input[0])){
@@ -149,8 +190,7 @@ void processInstruction(char *input){
       quit();
       break;
     case 'r':
-      eStopActivated = false;
-      Serial.println("INFO: Emergency stop reset.");
+      reset();
       break;
     case 'i':
       //Return information about positions
@@ -177,14 +217,6 @@ void printPositions(){
   Serial.println(outputString);
 }
 
-void printCalibration(){
-  String outputString = "STATUS: CALIBRATION";
-  for(int i = 0; i < TOTAL_JOINTS; i++) {
-    outputString += ","+(String)(joints[i].checkCalibration());
-  }
-  Serial.println(outputString);
-}
-
 void moveJoint(int jointIndex, int value){
   if(!eStopActivated){
     if(!armCalibrated)
@@ -201,49 +233,55 @@ void moveJoint(int jointIndex, int value){
   }
 }
 
-void moveJointTo(int jointIndex, int value){
-  if(!eStopActivated){
-    if(joints[jointIndex].checkCalibration()){
-      Serial.print("INFO: Moving motor ");
-      Serial.print(jointIndex);
-      Serial.print(" to position ");
-      Serial.print(value);
-      Serial.println(" degrees");
-      joints[jointIndex].moveTo(value);
-    } 
-    else{
-      Serial.print("WARNING: Joint ");
-      Serial.print(jointIndex);
-      Serial.print(" is not calibrated. Calibrate with 'c");
-      Serial.print(jointIndex);
-      Serial.println("' command.");
-    }
-  }
-  else{
-    Serial.println("WARNING: Movement Disabled. Reset with 'r' to continue.");
-  }
-}
-
+//------------------------------------------------------------------------------------------------------------------
+//Send Status Messages to Serial Line
+//------------------------------------------------------------------------------------------------------------------
 void sendStatus(){
   printPositions();
-  printCalibration();
   printMovemetStates();
   statusTime = millis();
 }
 
-void quit(){
-  for (int i = 0; i < TOTAL_JOINTS; i++){
-    joints[i].move(0);
-  }
-  Serial.println("INFO: Arm Stopped");
+//------------------------------------------------------------------------------------------------------------------
+//Stop Wheelchair
+//------------------------------------------------------------------------------------------------------------------
+void stop(){
+  leftMotor.stop();
+  rightMotor.stop();
+  Serial.println("INFO: Wheelchair Stopped.");
 }
 
-void eStop(){
-  for (int i = 0; i < TOTAL_JOINTS; i++){
-    joints[i].move(0);
+//------------------------------------------------------------------------------------------------------------------
+//Get Voltage
+//------------------------------------------------------------------------------------------------------------------
+float getVoltage(void){
+   float voltageFactor = 0.02932551; //Voltage in Volts
+   float voltageOffset = 1.65;
+   batteryVoltage = (analogRead(VOLTAGE_SENSOR)*voltageFactor)-voltageOffset;
+   return batteryVoltage;
   }
+  
+//------------------------------------------------------------------------------------------------------------------
+//Apply of Disengage Brakes
+//------------------------------------------------------------------------------------------------------------------
+void brakes(bool state){
+  digitalWrite(MOTOR_BRAKE,state);
+  digitalWrite(WARNING_LIGHT,!state);
+  }
+
+//------------------------------------------------------------------------------------------------------------------
+//ESTOP ROUTINE
+//------------------------------------------------------------------------------------------------------------------
+void eStop(){
+  leftMotor.stop();
+  rightMotor.stop();
   if(!eStopActivated){
     eStopActivated = true;
     Serial.println("INFO: Emergency Stop Pressed. Release button and reset with 'r' to continue.");
   }
 }
+
+//------------------------------------------------------------------------------------------------------------------
+//RESET FUNCTION
+//------------------------------------------------------------------------------------------------------------------
+void(* reset) (void) = 0;

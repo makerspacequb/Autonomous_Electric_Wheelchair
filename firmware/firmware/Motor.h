@@ -4,22 +4,21 @@
 class Motor{
   public:
     Motor();
-    Motor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed, int minSpeed, int accelRate, bool enableHIGH, bool motorInvert);
-    void move(int stepsToMove);
-    bool step(unsigned int elapsedMicros, bool contMove);
- 
+    Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin);
+    
+    void move(int mmToMove);
+    
     //setters
     void setSpeed(int speed);
-    void setMinSpeed(int minSpeed);
     void setAccelRate(int rate);
     void begin();
 
     //getters
     int getSpeed(){ return speed; };
-    int getSteps(){ return steps; };
 
   private:
-    int stepPin, dirPin, enablePin;
+    int iSleepPin, iFaultPin, speedPin, dirPin, currentPin, energisePin;
+    
     volatile int steps, currentSpeed, stepsTarget, currentStepDelayDuration, maxStepDelayDuration, speed, minSpeed, accelRate, accelLength;
     unsigned int stepRunTime;
     bool stepDelay, enableHIGH, motorInvert;
@@ -29,8 +28,7 @@ class Motor{
     void updateAccelParams();
 };
 
-Motor::Motor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirPin, int enablePin, int speed,
-      int minSpeed, int accelRate, bool enableHIGH, bool motorInvert){
+Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin){
   this->stepPin = stepPin;
   this->dirPin = dirPin;
   this->enablePin = enablePin;
@@ -49,10 +47,14 @@ Motor::Motor(int stepPin, volatile uint8_t *stepPort, uint8_t stepByte, int dirP
 
 //Needs to be called in setup to initialise pins
 void Motor::begin(){
-  pinMode(enablePin,OUTPUT);
-  pinMode(stepPin,OUTPUT);
+  //Pin Mode Setup
+  pinMode(energisePin,OUTPUT);
+  pinMode(iSleepPin,OUTPUT);
+  pinMode(speedPin,OUTPUT);
   pinMode(dirPin,OUTPUT);
-  digitalWrite(enablePin,enableHIGH);
+  pinMode(faultPin,INPUT);
+  pinMode(currentPin,INPUT);
+
 }
 
 bool Motor::step(unsigned int elapsedMicros, bool contMove){
@@ -119,15 +121,26 @@ void Motor::updateAccelParams(){
 
 //setters
 void Motor::setSpeed(int speed){
-  //speed in steps per second
   this->speed = speed;
-  updateAccelParams();
+  digitalWrite(speedPin,
 }
 
-void Motor::setMinSpeed(int minSpeed){
-  //speed in steps per second
-  this->minSpeed = minSpeed;
-  updateAccelParams();
+void Motor::rampSpeed(int desiredSpeed){
+  rampedSpeed = speed
+  if(desiredSpeed>speed){
+    while(speed != desiredSpeed){
+      rampedSpeed++;
+      setSpeed(rampedSpeed)
+      delayMicroseconds(accelDelay)
+    }
+   }
+   else if(desiredSpeed<speed){
+    while(speed != desiredSpeed){
+      rampedSpeed--;
+      setSpeed(rampedSpeed)
+      delayMicroseconds(accelDelay)
+    }
+   }
 }
 
 void Motor::setAccelRate(int rate){
@@ -135,4 +148,14 @@ void Motor::setAccelRate(int rate){
   updateAccelParams();
 }
 
+void Motor::hardStop(void){
+  setSpeed(0);
+  digitalWrite(energisePin,LOW);
+  }
+
+void Motor::softStop(void){
+  rampSpeed(0);
+  digitalWrite(energisePin,LOW);
+  }
+  
 #endif
