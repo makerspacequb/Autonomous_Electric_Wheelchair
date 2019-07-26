@@ -14,4 +14,8 @@
 #define INST_ARRAY_LEN 20 //length of instruction array
 #define INTERRUPT_TIME 100 //Polling interupt time (microseconds)
 
+#define ENCODER_DIAMETER 68 //IN MILIMETERS
+#define WHEEL_DIAMETER 230 //IN MILIMETERS
+#define PULSES_PER_REV 600
+
 #endif
