@@ -15,7 +15,8 @@
 unsigned long statusTime = millis();
 const int statusDelay = (1/STATUS_FREQ)*1000;
 volatile bool eStopActivated = false;
-char instruction[INST_ARRAY_LEN];
+String instruction[MAX_PARAMETERS];
+int instChar = 0;
 int instIndex = 0;
 
 //Declare Motor objects
@@ -59,8 +60,11 @@ bool interruptBusy = false;
 void interrupt(void){
   if(!interruptBusy){
     interruptBusy = true;
-    leftMotor.update(INTERRUPT_TIME);
-    rightMotor.update(INTERRUPT_TIME);
+    leftMotor.update(INTERRUPT_TIME,distanceTravelled(leftPulses));
+    rightMotor.update(INTERRUPT_TIME,distanceTravelled(rightPulses));
+    leftPulses = 0;
+    rightPulses = 0;
+    checkMovement();
     interruptBusy = false;
   }
 }
@@ -131,106 +135,139 @@ void readSerial(){
   if (Serial.available() > 0){
     char nextChar = Serial.read();
     //if char is new line last instruction complete, process instruction
-    if(nextChar == '\n'){
-      if(instIndex > 0) {
-        //make sure rest of instruction is cleared
-        for (int i = instIndex; i < INST_ARRAY_LEN; i++)
-          instruction[i] = NULL;
-        //send instruction for processing
-        processInstruction(instruction);
-        instIndex = 0;
-      }
+    if(nextChar == '\n')&&(instIndex > 0){
+      //Send instruction for exucution
+      executeInstruction(instruction);
+      instChar = 0;
+      instIndex = 0;
     }
     //add to instruction string
     else {
-      if(instIndex >= INST_ARRAY_LEN)
-        Serial.println("ERROR: Instruction parser: Instruction index out of bounds.");
-      else{
-        instruction[instIndex] = nextChar;
-        instIndex++;
+      if(instChar == 0){
+        instruction[instIndex] = null;
       }
-    }
+      if(instIndex >= MAX_PARAMS){
+        Serial.println("ERROR: Too many instruction variables passed.");
+      }
+      else if(instChar >= MAX_PARAM_LENGTH){
+        Serial.println("ERROR: Instruction variable too long.");
+      }
+      else if(nextChar = ','){
+        instIndex++;
+        instruction[instIndex] = null;
+      }
+      else{
+        instruction[instIndex] += nextChar;
+        instChar++;
+      }
+    }      
   }
 }
 
 //------------------------------------------------------------------------------------------------------------------
 //Process Incstruction
 //------------------------------------------------------------------------------------------------------------------
-void processInstruction(char *input){
+void executeInstruction(String instruction){
   //check first byte
-  switch(toLowerCase(input[0])){
+  switch(toLowerCase(instruction[0])){
     case 's': 
-      joints[input[1] - '0'].setSpeed(atol(input+2));
-      Serial.print("INFO: Set motor: ");
-      Serial.print(input[1]);
-      Serial.print(" to speed: ");
-      Serial.print(atol(input+2));
-      Serial.println("deg/s");
-      break;
-    case 'd': 
-      joints[input[1] - '0'].setMinSpeed(atol(input+2));
-      Serial.print("INFO: Set motor: ");
-      Serial.print(input[1]);
-      Serial.print(" min speed to: ");
-      Serial.print(atol(input+2));
-      Serial.println("deg/s");
+      if(instruction[1] == 'l'){
+        leftMotor.setSpeed(atol(instruction[2]));
+        Serial.print("INFO: Left motor speed set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s.");
+      }
+      else if(instruction[1] == 'r'){
+        rightMotor.setSpeed(atol(instruction[2]));
+        Serial.print("INFO: Right motor speed set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s.");
+      }
+      else if(instruction[1] == 'b'){
+        leftMotor.setSpeed(atol(instruction[2]));
+        rightMotor.setSpeed(atol(instruction[2]));
+        Serial.print("INFO: Base motor speed set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s.");
+      }
       break;
     case 'z': 
-      joints[input[1] - '0'].setAccelRate(atol(input+2));
-      Serial.print("INFO: Set motor: ");
-      Serial.print(input[1]);
-      Serial.print(" acceleration steps: ");
-      Serial.print(atol(input+2));
-      Serial.println("us/step");
+      if(instruction[1] == 'l'){
+        leftMotor.setBaseAccel(atol(instruction[2]));
+        Serial.print("INFO: Left motor accelleration set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s^2.");
+      }
+      else if(instruction[1] == 'r'){
+        rightMotor.setBaseAccel(atol(instruction[2]));
+        Serial.print("INFO: Right motor accelleration set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s^2.");
+      }
+      else if(instruction[1] == 'b'){
+        leftMotor.setBaseAccel(atol(instruction[2]));
+        rightMotor.setBaseAccel(atol(instruction[2]));
+        Serial.print("INFO: Base motor accelleration set to ");
+        Serial.print(instruction[2]);
+        Serial.println("mm/s^2.");
+      }
       break;
-    case 'm': 
-      moveJoint(input[1] - '0',atol(input+2)); 
+    case 't':
+      if(instruction[1] == 'l'){
+        leftMotor.setArbitarySpeed(atol(instruction[2]));
+        Serial.print("INFO: Left motor speed throttled to ");
+        Serial.print(instruction[2]);
+        Serial.println("%.");
+      }
+      else if(instruction[1] == 'r'){
+        rightMotor.setArbitarySpeed(atol(instruction[2]));
+        Serial.print("INFO: Right motor speed throttled to ");
+        Serial.print(instruction[2]);
+        Serial.println("%.");
+      }
       break;
-    case 'q': 
-      quit();
+    case 'i':
+      sendStatus();
       break;
     case 'r':
       reset();
       break;
-    case 'i':
-      //Return information about positions
-      printPositions();
+    case 'q': 
+      eStop();
+      break;
+    case 'm':
+      Serial.print("INFO: Moving wheelchair as defined."); 
+      move(atol(instruction[2]),atol(instruction[3])); 
       break;
     default: 
       Serial.println("WARNING: Command not found");
   }
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//Status Printing Functions
+//------------------------------------------------------------------------------------------------------------------
 void printMovemetStates(){
   String outputString = "STATUS: MOVEMENT";
-  for(int i = 0; i < TOTAL_JOINTS; i++) {
-    outputString += ","+(String)(joints[i].checkMovement());
-  }
+  outputString += ","+leftMotor.getMoveState();
+  outputString += ","+rightMotor.getMoveState();
   Serial.println(outputString);
 }
 
 void printPositions(){
-  String outputString = "STATUS: POSITION";
-  for(int i = 0; i < TOTAL_JOINTS; i++) {
-    outputString += ","+(String)(joints[i].getPosDegrees());
-  }
+  String outputString = "STATUS: DISTANCE"
+  outputString += ","+leftMotor.getDistance();
+  outputString += ","+rightMotor.getDistance();
   Serial.println(outputString);
 }
 
-void moveJoint(int jointIndex, int value){
-  if(!eStopActivated){
-    if(!armCalibrated)
-      Serial.println("WARNING: Motors are not calibrated. Calibrate with 'c' command.");
-      Serial.print("INFO: Moving motor ");
-      Serial.print(jointIndex);
-      Serial.print(", ");
-      Serial.print(value);
-      Serial.println(" degrees");
-      joints[jointIndex].move(value);
-    }
-  else{
-    Serial.println("WARNING: Movement Disabled. Reset with 'r' to continue.");
-  }
+//------------------------------------------------------------------------------------------------------------------
+//Get Voltage
+//------------------------------------------------------------------------------------------------------------------
+void checkMovement(){
+  if((leftMotor.getMoveState() == 0)&&(rightMotor.getMoveState() == 0)){
+    brakes(true);
+  } 
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -262,7 +299,7 @@ float getVoltage(void){
   }
   
 //------------------------------------------------------------------------------------------------------------------
-//Apply of Disengage Brakes
+//Apply or Disengage Brakes
 //------------------------------------------------------------------------------------------------------------------
 void brakes(bool state){
   digitalWrite(MOTOR_BRAKE,state);
@@ -270,11 +307,19 @@ void brakes(bool state){
   }
 
 //------------------------------------------------------------------------------------------------------------------
+//Calculate Distance
+//------------------------------------------------------------------------------------------------------------------
+double distanceTravelled(int pulses){
+  double movement = encoderMultiplier*pulses;
+  return movement;
+  }
+  
+//------------------------------------------------------------------------------------------------------------------
 //ESTOP ROUTINE
 //------------------------------------------------------------------------------------------------------------------
 void eStop(){
-  leftMotor.stop();
-  rightMotor.stop();
+  leftMotor.softStop();
+  rightMotor.hardStop();
   if(!eStopActivated){
     eStopActivated = true;
     Serial.println("INFO: Emergency Stop Pressed. Release button and reset with 'r' to continue.");
