@@ -24,7 +24,7 @@ class Motor{
 
   private:
     int iSleepPin, iFaultPin, speedPin, dirPin, currentPin, energisePin;
-    bool stopped;
+    bool stopped, throttle;
     double distanceTravelled,actualSpeed,desiredSpeed;
     volatile int motorSpeed, desiredMovement;
     volatile bool fault;
@@ -100,7 +100,7 @@ void Motor::move(int distance){
 
 }
 
-void Motor::throttle(int elapsedMicros){
+void Motor::speedController(int elapsedMicros){
   if(actualSpeed != desiredSpeed){
     double error = desiredSpeed - actualSpeed;                              
     cumulativeError += error * elapsedMicros;             
@@ -116,10 +116,18 @@ void Motor:determineSpeed(double distance,unsigned int elapsedMicros){
   actualSpeed = distance/(elapsedMicros/10000000);
 }
 
+void Motor::throttleSpeed(int percentage){
+  throttle = true;
+  int throttle = map(percentage,-100,100,-255,255);
+  setSpeed(throttleSpeed);
+}
+
 //setters
 void Motor::setSpeed(int speed){
+  this->direction = speed/abs(speed);
   this->motorSpeed = speed;
-  digitalWrite(speedPin,speed);
+  digitalWrite(speedPin,motorSpeed);
+  digitalWrite(dirPin,direction);
 }
 
 void Motor::rampSpeed(int desiredSpeed){

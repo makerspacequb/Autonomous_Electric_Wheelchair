@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------------------------
 // NAME: firmware.ino
 // AUTH: Ryan McCartney
-// DATE: 22nd July 2019
+// DATE: 26th July 2019
 // DESC: Pin Defintiions for Autonomous Wheelchair
 // NOTE: All Rights Reserved, 2019, QLab Makerspace
 //------------------------------------------------------------------------------------------------------------------
@@ -214,13 +214,13 @@ void executeInstruction(String instruction){
       break;
     case 't':
       if(instruction[1] == 'l'){
-        leftMotor.setArbitarySpeed(atol(instruction[2]));
+        leftMotor.throttleSpeed(atol(instruction[2]));
         Serial.print("INFO: Left motor speed throttled to ");
         Serial.print(instruction[2]);
         Serial.println("%.");
       }
       else if(instruction[1] == 'r'){
-        rightMotor.setArbitarySpeed(atol(instruction[2]));
+        rightMotor.throttleSpeed(atol(instruction[2]));
         Serial.print("INFO: Right motor speed throttled to ");
         Serial.print(instruction[2]);
         Serial.println("%.");
@@ -247,6 +247,12 @@ void executeInstruction(String instruction){
 //------------------------------------------------------------------------------------------------------------------
 //Status Printing Functions
 //------------------------------------------------------------------------------------------------------------------
+void sendStatus(){
+  printPositions();
+  printMovemetStates();
+  statusTime = millis();
+}
+
 void printMovemetStates(){
   String outputString = "STATUS: MOVEMENT";
   outputString += ","+leftMotor.getMoveState();
@@ -262,29 +268,23 @@ void printPositions(){
 }
 
 //------------------------------------------------------------------------------------------------------------------
-//Get Voltage
+//Check Movement and Change Brakes and Lights
 //------------------------------------------------------------------------------------------------------------------
 void checkMovement(){
   if((leftMotor.getMoveState() == 0)&&(rightMotor.getMoveState() == 0)){
     brakes(true);
   } 
-}
-
-//------------------------------------------------------------------------------------------------------------------
-//Send Status Messages to Serial Line
-//------------------------------------------------------------------------------------------------------------------
-void sendStatus(){
-  printPositions();
-  printMovemetStates();
-  statusTime = millis();
+  else{
+     brakes(false);
+  }
 }
 
 //------------------------------------------------------------------------------------------------------------------
 //Stop Wheelchair
 //------------------------------------------------------------------------------------------------------------------
 void stop(){
-  leftMotor.stop();
-  rightMotor.stop();
+  leftMotor.softStop();
+  rightMotor.softStop();
   Serial.println("INFO: Wheelchair Stopped.");
 }
 
@@ -318,7 +318,7 @@ double distanceTravelled(int pulses){
 //ESTOP ROUTINE
 //------------------------------------------------------------------------------------------------------------------
 void eStop(){
-  leftMotor.softStop();
+  leftMotor.hardStop();
   rightMotor.hardStop();
   if(!eStopActivated){
     eStopActivated = true;
