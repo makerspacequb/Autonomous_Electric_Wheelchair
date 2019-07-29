@@ -167,7 +167,6 @@ void readSerial(){
       }
       else if(nextChar == ','){
         instIndex++;
-        Serial.println("HERE");
         instruction[instIndex] = "";
       }
       else{
@@ -328,8 +327,8 @@ float getVoltage(void){
 //Apply or Disengage Brakes
 //------------------------------------------------------------------------------------------------------------------
 void brakes(bool state){
-  digitalWrite(MOTOR_BRAKES,state);
-  digitalWrite(WARNING_LIGHT,!state);
+  digitalWrite(MOTOR_BRAKES,!state);
+  digitalWrite(WARNING_LIGHT,state);
   }
 
 //------------------------------------------------------------------------------------------------------------------
