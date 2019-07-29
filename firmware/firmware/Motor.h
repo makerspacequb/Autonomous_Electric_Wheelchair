@@ -1,48 +1,51 @@
 #ifndef MOTOR_H
 #define MOTOR_H
+#include "Config.h"
 
 class Motor{
   public:
     Motor();
     Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin);
-    
+
+    //PUBLIC - Actions
+    void update(unsigned int elapsedMicros,double distance);
     void move(int mmToMove);
-    
-    //setters
+    void hardStop();
+    void softStop();
+    void rampSpeed(int desiredSpeed);
+
+    //PUBLIC - Getters
+    bool getMoveState();
+      
+    //PUBLIC - Setters
     void setSpeed(int speed);
     void setAccelRate(int rate);
     void begin();
 
-    //getters
-    int getSpeed(){ return speed; };
-
   private:
     int iSleepPin, iFaultPin, speedPin, dirPin, currentPin, energisePin;
-    
-    volatile int steps, currentSpeed, stepsTarget, currentStepDelayDuration, maxStepDelayDuration, speed, minSpeed, accelRate, accelLength;
-    unsigned int stepRunTime;
-    bool stepDelay, enableHIGH, motorInvert;
-    volatile uint8_t *stepPort;
-    uint8_t stepByte;
-    void updateAccel();
-    void updateAccelParams();
+    bool stopped, throttle;
+    double distanceTravelled,actualSpeed,desiredSpeed;
+    volatile int motorSpeed, desiredMovement;
+    volatile bool fault;
+    volatile float current;
+
+    //PID Variables
+    double cumulativeError,lastError
+ 
+    //PRIVATE - Getters
+    float getCurrent();
+    bool getFaultState();
 };
 
-Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin){
-  this->stepPin = stepPin;
+Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin){ 
+  this->iSleepPin = iSleepPin;
+  this->iFaultPin = iFaultPin;
+  this->speedPin = speedPin;
   this->dirPin = dirPin;
-  this->enablePin = enablePin;
-  this->accelRate = accelRate;
-  this->enableHIGH = enableHIGH;
-  this->motorInvert = motorInvert;
-  this->stepPort = stepPort;
-  this->stepByte = stepByte;
-  setSpeed(speed);
-  setMinSpeed(minSpeed);
-  steps = 0;
-  stepRunTime = 0;
-  currentStepDelayDuration = maxStepDelayDuration;
-  
+  this->currentPin = currentPin;
+  this->energisePin = energisePin; 
+  this->stopped = false;
 }
 
 //Needs to be called in setup to initialise pins
@@ -52,34 +55,19 @@ void Motor::begin(){
   pinMode(iSleepPin,OUTPUT);
   pinMode(speedPin,OUTPUT);
   pinMode(dirPin,OUTPUT);
-  pinMode(faultPin,INPUT);
+  pinMode(iFaultPin,INPUT);
   pinMode(currentPin,INPUT);
+  //Make sure wheelchair is stopped
+  hardStop();
+  distanceTravelled = 0.0;
 
 }
 
-bool Motor::step(unsigned int elapsedMicros, bool contMove){
-  bool stepped = false;
-  stepRunTime += elapsedMicros;
-  if (steps > 0){
-    if(!stepDelay){
-      *stepPort = *stepPort & (~stepByte);
-      delayMicroseconds(3);
-      *stepPort = *stepPort | stepByte;
-      stepped = true;
-      stepDelay = true;
-      if(!contMove){
-        steps--;
-        }
-    }
-    else{
-      if(stepRunTime > currentStepDelayDuration){
-        stepRunTime = 0;
-        updateAccel();  
-        stepDelay = false;
-      }
-   }
-  }
-  return stepped;
+void Motor::update(unsigned int elapsedMicros,double distance){
+  fault = getFaultState();
+  distanceTravelled =+ distance;
+  determineSpeed(distanceTravelled, elapsedMicros);
+  updateSpeed();
 }
 
 void Motor::updateAccel(){
@@ -105,24 +93,41 @@ void Motor::updateAccel(){
   currentStepDelayDuration = (long)1000000 / (long)currentSpeed;    
 }
 
-void Motor::move(int stepsToMove){
-  steps = stepsTarget = abs(stepsToMove);
-  
-  //Set Direction of Motor
-  digitalWrite(dirPin, (stepsToMove > 0) ^ motorInvert);
-  //Set speed to min
-  currentSpeed = minSpeed;
+void Motor::move(int distance){
+
+  desiredMovement = distance;
+  distanceTravelled = 0.0;
+
 }
 
-void Motor::updateAccelParams(){
-  accelLength = (speed-minSpeed)/accelRate;
-  stepsTarget = steps;
+void Motor::speedController(int elapsedMicros){
+  if(actualSpeed != desiredSpeed){
+    double error = desiredSpeed - actualSpeed;                              
+    cumulativeError += error * elapsedMicros;             
+    double rateError = (error - lastError)/elapsedMicros;
+    int outputSpeed = KP*error + KI*cumulativeError + KD*rateError;                           
+    setSpeed(outputSpeed);
+    lastError = error; 
+  }
+}
+
+void Motor:determineSpeed(double distance,unsigned int elapsedMicros){
+  //Speed in mm/s 
+  actualSpeed = distance/(elapsedMicros/10000000);
+}
+
+void Motor::throttleSpeed(int percentage){
+  throttle = true;
+  int throttle = map(percentage,-100,100,-255,255);
+  setSpeed(throttleSpeed);
 }
 
 //setters
 void Motor::setSpeed(int speed){
-  this->speed = speed;
-  digitalWrite(speedPin,
+  this->direction = speed/abs(speed);
+  this->motorSpeed = speed;
+  digitalWrite(speedPin,motorSpeed);
+  digitalWrite(dirPin,direction);
 }
 
 void Motor::rampSpeed(int desiredSpeed){
@@ -148,14 +153,39 @@ void Motor::setAccelRate(int rate){
   updateAccelParams();
 }
 
+//PUBLIC - GETTER
+bool Motor::getMoveState(){
+  bool state = !stopped;
+  return state;
+  }
+
+//PRIVATE - Getter
+bool Motor::getFaultState(){ 
+  bool status = !digitalRead(iFaultPin);
+  return status;
+  }
+
+//PRIVATE - Getter
+float Motor::getCurrent(){
+  float currentFactor = 0.244379;
+  float currentOffset = 0.00;
+  //Current in Amperes
+  float newCurrent= (analogRead(currentPin)-currentOffset)*currentFactor;
+  return newCurrent;
+  }
+
+//PUBLIC - Action
 void Motor::hardStop(void){
   setSpeed(0);
   digitalWrite(energisePin,LOW);
+  stopped = false;
   }
 
+//PUBLIC - Action
 void Motor::softStop(void){
   rampSpeed(0);
   digitalWrite(energisePin,LOW);
+  stopped = false;
   }
   
 #endif

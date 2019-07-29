@@ -11,11 +11,17 @@
 
 #define STATUS_FREQ 1
 #define BAUD_RATE 115200
-#define INST_ARRAY_LEN 20 //length of instruction array
+#define MAX_PARAM_LENGTH 6 //length of instruction array
+#define MAX_PARAMS 3 //Maximum number of variables in an instruction
 #define INTERRUPT_TIME 100 //Polling interupt time (microseconds)
 
 #define ENCODER_DIAMETER 68 //IN MILIMETERS
 #define WHEEL_DIAMETER 230 //IN MILIMETERS
 #define PULSES_PER_REV 600
+
+//PID CONTROL for Speed Sync
+#define KP 2
+#define KI 5
+#define KD 1
 
 #endif
