@@ -20,8 +20,8 @@
 
 #define RIGHT_MOTOR_SPEED 8 //PWM Input on Board
 
-#define RightEncoderA 18
-#define RightEncoderB 19
+#define RIGHT_ENCODER_A 18
+#define RIGHT_ENCODER_B 19
 
 //Left Motor
 #define LEFT_MOTOR_DIR 26 //DIR Input on Board
@@ -33,8 +33,8 @@
 
 #define LEFT_MOTOR_SPEED 9 //PWM Input on Board
 
-#define LeftEncoderA 20
-#define LeftEncoderB 21
+#define LEFT_ENCODER_A 20
+#define LEFT_ENCODER_B 21
 
 //Other
 #define MOTOR_BRAKES 52 //Relay to apply mechanical brake
