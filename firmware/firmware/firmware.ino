@@ -19,13 +19,12 @@ String instruction[MAX_PARAMS] = {};
 int instChar,instIndex = 0;
 
 //Declare Motor objects
-Motor leftMotor = Motor(LEFT_MOTOR_SLEEP, LEFT_MOTOR_FAULT, LEFT_MOTOR_SPEED, PWM_SCALER, LEFT_MOTOR_DIR, LEFT_MOTOR_CURRENT, LEFT_MOTOR_ENERGISE);
-Motor rightMotor = Motor(RIGHT_MOTOR_SLEEP, RIGHT_MOTOR_FAULT, RIGHT_MOTOR_SPEED, PWM_SCALER, RIGHT_MOTOR_DIR, RIGHT_MOTOR_CURRENT, RIGHT_MOTOR_ENERGISE);
+Motor leftMotor = Motor(LEFT_MOTOR_SLEEP, LEFT_MOTOR_FAULT, LEFT_MOTOR_SPEED, PWM_SCALER, LEFT_MOTOR_TIMER, LEFT_MOTOR_DIR, LEFT_MOTOR_CURRENT, LEFT_MOTOR_ENERGISE);
+Motor rightMotor = Motor(RIGHT_MOTOR_SLEEP, RIGHT_MOTOR_FAULT, RIGHT_MOTOR_SPEED, PWM_SCALER, RIGHT_MOTOR_TIMER, RIGHT_MOTOR_DIR, RIGHT_MOTOR_CURRENT, RIGHT_MOTOR_ENERGISE);
 
 //Iniitialise Encoder Variables
 volatile int leftPulses = 0;
 volatile int rightPulses = 0;
-double encoderMultiplier = 0.00;
 
 //------------------------------------------------------------------------------------------------------------------
 //Encoder Interupts
@@ -62,12 +61,15 @@ void(* reset) (void) = 0;
 //------------------------------------------------------------------------------------------------------------------
 bool interruptBusy = false;
 void interrupt(void){
+  int newPulses = 0;
   if(!interruptBusy){
     interruptBusy = true;
-    leftMotor.update(INTERRUPT_TIME,distanceTravelled(leftPulses));
-    rightMotor.update(INTERRUPT_TIME,distanceTravelled(rightPulses));
-    leftPulses = 0;
-    rightPulses = 0;
+    newPulses = leftPulses;
+    leftMotor.update(INTERRUPT_TIME,newPulses);
+    leftPulses -= newPulses;
+    newPulses = rightPulses;
+    rightMotor.update(INTERRUPT_TIME,newPulses);
+    rightPulses -= newPulses;
     checkMovement();
     interruptBusy = false;
   }
@@ -79,7 +81,7 @@ void interrupt(void){
 void setup() { 
 
   leftMotor.begin();
-  leftMotor.begin();
+  rightMotor.begin();
    
   //Setup Main Serial
   Serial.begin(BAUD_RATE);
@@ -109,10 +111,7 @@ void setup() {
 
   //Setup Voltage Sensor
   pinMode(VOLTAGE_SENSOR, INPUT_PULLUP);
-  
-  //Calculate Distance Constant
-  encoderMultiplier = (ENCODER_DIAMETER*PI)/PULSES_PER_REV;
-     
+       
   //set timer interrupt for motor control
   Timer1.attachInterrupt(interrupt);
   Timer1.initialize(INTERRUPT_TIME);
@@ -185,13 +184,13 @@ void executeInstruction(){
   switch(instruction[0].charAt(0)){
     case 's': 
       if(instruction[1].charAt(0) == 'l'){
-        leftMotor.setSpeed(instruction[2].toFloat());
+        leftMotor.moveMetricSpeed(instruction[2].toFloat());
         Serial.print("INFO: Left motor speed set to ");
         Serial.print(instruction[2]);
         Serial.println("mm/s.");
       }
       else if(instruction[1].charAt(0) == 'r'){
-        rightMotor.setSpeed(instruction[2].toFloat());
+        rightMotor.moveMetricSpeed(instruction[2].toFloat());
         Serial.print("INFO: Right motor speed set to ");
         Serial.print(instruction[2]);
         Serial.println("mm/s.");
@@ -228,13 +227,13 @@ void executeInstruction(){
     case 't':
       brakes(false);
       if(instruction[1].charAt(0) == 'l'){
-        leftMotor.setMotorSpeed(instruction[2].toInt());
+        leftMotor.moveArbitarySpeed(instruction[2].toInt());
         Serial.print("INFO: Left motor speed throttled to ");
         Serial.print(instruction[2]);
         Serial.println(".");
       }
       else if(instruction[1].charAt(0) == 'r'){
-        rightMotor.setMotorSpeed(instruction[2].toInt());
+        rightMotor.moveArbitarySpeed(instruction[2].toInt());
         Serial.print("INFO: Right motor speed throttled to ");
         Serial.print(instruction[2]);
         Serial.println(".");
@@ -330,15 +329,6 @@ void brakes(bool state){
   digitalWrite(MOTOR_BRAKES,!state);
   digitalWrite(WARNING_LIGHT,state);
   }
-
-//------------------------------------------------------------------------------------------------------------------
-//Calculate Distance
-//------------------------------------------------------------------------------------------------------------------
-double distanceTravelled(int pulses){
-  double movement = encoderMultiplier*pulses;
-  return movement;
-  }
-
 
 //------------------------------------------------------------------------------------------------------------------
 //Move As Described

@@ -5,10 +5,10 @@
 class Motor{
   public:
     Motor();
-    Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin);
+    Motor(int iSleepPin, int iFaultPin, int speedPin, int pwmScaler, volatile uint8_t *timerPort, int dirPin, int currentPin, int energisePin);
 
     //PUBLIC - Actions
-    void update(unsigned int elapsedMicros,double distance);
+    void update(unsigned int elapsedMicros,int pulses);
     void hardStop(void);
     void softStop(void);
     double determineSpeed(double distance,unsigned int elapsedMicros);
@@ -18,8 +18,9 @@ class Motor{
       
     //PUBLIC - Setters
     void setSpeed(float newSpeed);
+    void moveMetricSpeed(float speed);
+    void moveArbitarySpeed(int arbitarySpeed);
     void setAccelRate(float rate);
-    void setMotorSpeed(int arbitarySpeed);
     void begin(void);
     float getCurrent(void);
   
@@ -34,16 +35,18 @@ class Motor{
     void adjustSpeed(int speed);
     void energise(bool state);
     void sleep(bool state);
+    double calculateDistance(int pulses);
     
     //PRIVATE - Pin Definitions
     int iSleepPin, iFaultPin, speedPin, pwmScaler, dirPin, currentPin, energisePin;
 
     //PRIVATE - Other Variables
     volatile bool stopped,manualControl;
-    double distanceTravelled,actualSpeed;
+    double encoderMultiplier,distanceTravelled,actualSpeed;
     volatile int desiredMovement,accellerationDelay;
     volatile bool fault;
     volatile float current,accelRate,desiredSpeed;
+    volatile uint8_t *timerPort;
 
     //PRIVATE - Speed Variables
     volatile int motorSpeed,motorDirection;
@@ -53,7 +56,7 @@ class Motor{
     double cumulativeError,lastError;
 };
 
-Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int pwmScaler, int dirPin, int currentPin, int energisePin){ 
+Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int pwmScaler, volatile uint8_t *timerPort, int dirPin, int currentPin, int energisePin){ 
   this->iSleepPin = iSleepPin;
   this->iFaultPin = iFaultPin;
   this->speedPin = speedPin;
@@ -62,6 +65,7 @@ Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int pwmScaler, int dirP
   this->energisePin = energisePin; 
   this->stopped = true;
   this->pwmScaler = pwmScaler;
+  this->timerPort = timerPort;
 }
 
 //Needs to be called in setup to initialise pins
@@ -75,20 +79,23 @@ void Motor::begin(){
   pinMode(currentPin,INPUT);
 
   //Adjust PWM Frequency
-  TCCR2B &= ~7; //Clear Bits
-  TCCR2B |= pwmScaler;
+  *timerPort &= ~7; //Clear Bits
+  *timerPort |= pwmScaler;
+  
+  //Calculate Distance Constant
+  encoderMultiplier = (ENCODER_DIAMETER*PI)/PULSES_PER_REV;
   
   //Make sure wheelchair is stopped
   hardStop();
   distanceTravelled = 0.0;
-
 }
 
-void Motor::update(unsigned int elapsedMicros,double distance){
+void Motor::update(unsigned int elapsedMicros,int pulses){
   fault = getFaultState();
-  distanceTravelled =+ distance;
-  actualSpeed = determineSpeed(distanceTravelled, elapsedMicros);
-  if(manualControl){
+  double distance = calculateDistance(pulses);
+  distanceTravelled +=distance;
+  actualSpeed = determineSpeed(distance, elapsedMicros);
+  if(!manualControl){
     updateAccel(elapsedMicros);
     throttle(elapsedMicros);
   }
@@ -108,9 +115,10 @@ void Motor::updateAccel(unsigned int elapsedMicros){
 void Motor::throttle(int elapsedMicros){
   if(currentSpeed != goalSpeed){
     double error = goalSpeed - currentSpeed;                              
-    cumulativeError += error * elapsedMicros;             
+    cumulativeError += error * (elapsedMicros*1000000);             
     double rateError = (error - lastError)/elapsedMicros;
-    int newMotorSpeed = (KP*error) + (KI*cumulativeError) + (KD*rateError);                           
+    int deltaSpeed = (KP*error) + (KI*cumulativeError) + (KD*rateError); 
+    int newMotorSpeed = motorSpeed + deltaSpeed;                        
     adjustSpeed(newMotorSpeed);
     lastError = error; 
   }
@@ -130,13 +138,18 @@ void Motor::adjustSpeed(int speed){
     stopped = true;
   }
   else{
-    this->motorDirection = speed/abs(speed);
-    this->motorSpeed = abs(speed);
+    motorDirection = speed/abs(speed);
+    motorSpeed = abs(speed);
     //Write the Pins
     energise(true);
     sleep(false);
-    digitalWrite(dirPin,motorDirection);
-    analogueWrite(speedPin,motorSpeed);
+    if(motorDirection == -1){
+      digitalWrite(dirPin,1);
+    }
+    else{
+      digitalWrite(dirPin,0);
+      }
+    analogWrite(speedPin,motorSpeed);
     stopped = false;
   }
 }
@@ -145,23 +158,39 @@ void Motor::updateAccelParams(){
   accellerationDelay = 1/accelRate;
 }
 
-void Motor::setSpeed(float newSpeed){
-  this->desiredSpeed = newSpeed;
-}
-
 void Motor::setAccelRate(float rate){
   this->accelRate = rate;
   updateAccelParams();
 }
+
+
+double Motor::calculateDistance(int pulses){
+  double movement = encoderMultiplier*pulses;
+  return movement;
+  }
 
 //PRIVATE - SETTER
 void Motor::energise(bool state){
   digitalWrite(energisePin,!state);
 }
 
+
 //PUBLIC - SETTER
-void Motor::setMotorSpeed(int arbitarySpeed){
+void Motor::setSpeed(float newSpeed){
+  manualControl = false;
+  this->desiredSpeed = newSpeed;
+}
+
+//PUBLIC - SETTER
+void Motor::moveMetricSpeed(float speed){
+  manualControl = false;
+  goalSpeed = speed;
+}
+
+//PUBLIC - SETTER
+void Motor::moveArbitarySpeed(int arbitarySpeed){
   if((arbitarySpeed<= 255)&&(arbitarySpeed>= -255)){
+    distanceTravelled = 0.0;
     manualControl = true;
     adjustSpeed(arbitarySpeed);
   }
