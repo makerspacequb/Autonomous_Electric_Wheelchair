@@ -6,29 +6,8 @@
 // NOTE: All Rights Reserved, 2018, Queen's University Belfast
 //------------------------------------------------------------------------------------------------------------------
 
-//Pin Definitions
-#define RightMotorDirection 24 //DIR Input on Board
-#define LeftMotorDirection 22 //DIR Input on Board
-
-#define RightMotorSleep 28 //SLP Input on Board
-#define LeftMotorSleep 26  //SLP Input on Board
-
-#define RightMotorFault 32 //FLT Pin on Board
-#define LeftMotorFault 30  //FLT Pin on Board
-
-#define RightMotorEnergise 36 //Relay Isolating Supply to Right Motor
-#define LeftMotorEnergise 34  //Relay Isolating Supply to Left Motor
-
-#define RightMotorSpeed 3 //PWM Input on Board
-#define LeftMotorSpeed 2 //PWM Input on Board
-
-#define RightMotorCurrent 1 //CS Pin on Board
-#define LeftMotorCurrent 0  //CS Pin on Board
-
-#define MotorBrakes 40 //Relay to apply mechanical brake
-#define WarningLight 38 //Relay to apply mechanical brake
-#define Reset 42 //Pin attached to reset for instrinsic program reset
-#define BatteryIndication 2 //Voltage Sensor
+#include "pins.h"
+#include "config.h"
 
 //Receive Data Variables
 float maxCurrent = 30.00;
@@ -64,47 +43,50 @@ int rightDirection = 1;
 //------------------------------------------------------------------------------------------------------------------
 void setup() {
   //Deal with RESET Pin
-  digitalWrite(Reset, HIGH);
+  digitalWrite(RESET, HIGH);
 
   //Change PWM Frequency to 31.25KHz
-  TCCR3B = TCCR3B & 0b11111000 | 0x01;
+  LEFT_MOTOR_TIMER &= ~7; //Clear Bits
+  LEFT_MOTOR_TIMER |= PWM_SCALER;
+  RIGHT_MOTOR_TIMER &= ~7; //Clear Bits
+  RIGHT_MOTOR_TIMER |= PWM_SCALER;
   
   //Initialise Ourput Pins
-  pinMode(RightMotorDirection, OUTPUT);
-  pinMode(LeftMotorDirection, OUTPUT);
-  pinMode(RightMotorSpeed, OUTPUT);
-  pinMode(LeftMotorSpeed, OUTPUT);
-  pinMode(RightMotorEnergise, OUTPUT);
-  pinMode(LeftMotorEnergise, OUTPUT);   
-  pinMode(MotorBrakes, OUTPUT);
-  pinMode(WarningLight, OUTPUT);
-  pinMode(Reset, OUTPUT);
+  pinMode(RIGHT_MOTOR_DIR, OUTPUT);
+  pinMode(LEFT_MOTOR_DIR, OUTPUT);
+  pinMode(RIGHT_MOTOR_SPEED, OUTPUT);
+  pinMode(LEFT_MOTOR_SPEED, OUTPUT);
+  pinMode(RIGHT_MOTOR_ENERGISE, OUTPUT);
+  pinMode(LEFT_MOTOR_ENERGISE, OUTPUT);   
+  pinMode(MOTOR_BRAKES, OUTPUT);
+  pinMode(WARNING_LIGHT, OUTPUT);
+  pinMode(RESET, OUTPUT);
 
   //Set Initial State
-  digitalWrite(RightMotorDirection, 1);
-  digitalWrite(LeftMotorDirection, 1);
-  digitalWrite(RightMotorEnergise, 1);
-  digitalWrite(LeftMotorEnergise, 1);
-  digitalWrite(RightMotorSpeed, 0);
-  digitalWrite(LeftMotorSpeed, 0);
-  digitalWrite(MotorBrakes, 0);
-  digitalWrite(WarningLight, 0);
+  digitalWrite(RIGHT_MOTOR_DIR, 1);
+  digitalWrite(LEFT_MOTOR_DIR, 1);
+  digitalWrite(RIGHT_MOTOR_ENERGISE, 1);
+  digitalWrite(LEFT_MOTOR_ENERGISE, 1);
+  digitalWrite(RIGHT_MOTOR_SPEED, 0);
+  digitalWrite(LEFT_MOTOR_SPEED, 0);
+  digitalWrite(MOTOR_BRAKES, 0);
+  digitalWrite(WARNING_LIGHT, 0);
   
   //Setup Input Pins
-  pinMode(BatteryIndication, INPUT_PULLUP);
-  pinMode(RightMotorCurrent, INPUT_PULLUP);
-  pinMode(LeftMotorCurrent, INPUT_PULLUP);
-  pinMode(RightMotorFault, INPUT_PULLUP);
-  pinMode(LeftMotorFault, INPUT_PULLUP);
+  pinMode(VOLTAGE_SENSOR, INPUT_PULLUP);
+  pinMode(RIGHT_MOTOR_CURRENT, INPUT_PULLUP);
+  pinMode(LEFT_MOTOR_CURRENT, INPUT_PULLUP);
+  pinMode(RIGHT_MOTOR_FAULT, INPUT_PULLUP);
+  pinMode(LEFT_MOTOR_FAULT, INPUT_PULLUP);
 
   //Serial Communications Setup
-  Serial.begin(115200);
+  Serial.begin(BAUD_RATE);
   //Reserve Memory Sapce for Incomming Bytes
   inputString.reserve(200);
   statusMessage = "STATUS = System restarting.";
 
   //Calibrate the current value on startup
-  currentOffset = (analogRead(RightMotorCurrent)+analogRead(LeftMotorCurrent))/2;
+  currentOffset = (analogRead(RIGHT_MOTOR_CURRENT)+analogRead(LEFT_MOTOR_CURRENT))/2;
   
   sendData();
   delay(250);
@@ -357,19 +339,19 @@ bool executeCommands() {
     setAngle = 0;
   
     //Speed to Zero
-    analogWrite(RightMotorSpeed, 0);
-    analogWrite(LeftMotorSpeed, 0);
+    analogWrite(RIGHT_MOTOR_SPEED, 0);
+    analogWrite(LEFT_MOTOR_SPEED, 0);
  
     //Turn Off Brakes
-    digitalWrite(MotorBrakes, 1);
+    digitalWrite(MOTOR_BRAKES, 1);
     
     //Enable Wheelchair Coasting
-    digitalWrite(RightMotorSleep, 0);
-    digitalWrite(LeftMotorSleep, 0);
+    digitalWrite(RIGHT_MOTOR_SLEEP, 0);
+    digitalWrite(LEFT_MOTOR_SLEEP, 0);
 
     //Isolate the motor power supply
-    digitalWrite(RightMotorEnergise, 1);
-    digitalWrite(LeftMotorEnergise, 1);
+    digitalWrite(RIGHT_MOTOR_ENERGISE, 1);
+    digitalWrite(LEFT_MOTOR_ENERGISE, 1);
        
     statusMessage =  "WARNING = Brakes Not Engaged, beware of vechile movement.";
     sendData();
@@ -380,7 +362,7 @@ bool executeCommands() {
     statusMessage =  "WARNING = Controller is resseting. Expect abnormal behaviour.";
     sendData();
     delay(250);
-    digitalWrite(Reset, 0);
+    digitalWrite(RESET, 0);
     status = true;
   }
   else{
@@ -403,22 +385,22 @@ void stopWheelchair() {
    setAngle = 0;
      
    //Speed to Zero
-   analogWrite(RightMotorSpeed, 0);
-   analogWrite(LeftMotorSpeed, 0);
+   analogWrite(RIGHT_MOTOR_SPEED, 0);
+   analogWrite(LEFT_MOTOR_SPEED, 0);
  
    //Isolate the motor power supply
-   digitalWrite(RightMotorEnergise, 1);
-   digitalWrite(LeftMotorEnergise, 1);
+   digitalWrite(RIGHT_MOTOR_ENERGISE, 1);
+   digitalWrite(LEFT_MOTOR_ENERGISE, 1);
     
    //Stop Wheelchair Coasting
-   digitalWrite(RightMotorSleep, 0);
-   digitalWrite(LeftMotorSleep, 0);
+   digitalWrite(RIGHT_MOTOR_SLEEP, 0);
+   digitalWrite(LEFT_MOTOR_SLEEP, 0);
 
    //Apply Brakes
-   digitalWrite(MotorBrakes, 0);
+   digitalWrite(MOTOR_BRAKES, 0);
 
    //Turn Off Warning Light
-   digitalWrite(WarningLight, 0);
+   digitalWrite(WARNING_LIGHT, 0);
    return;
 }
 
@@ -433,12 +415,12 @@ void readInputs() {
    float currentFactor = 0.244379; //Current in Amps
  
    //Read sensor data to update variables 
-   batteryVoltage = (analogRead(BatteryIndication)*voltageFactor)-voltageOffset;
-   rightMotorCurrent = (analogRead(RightMotorCurrent)-currentOffset)*currentFactor;
-   leftMotorCurrent = (analogRead(LeftMotorCurrent)-currentOffset)*currentFactor;
+   batteryVoltage = (analogRead(VOLTAGE_SENSOR)*voltageFactor)-voltageOffset;
+   rightMotorCurrent = (analogRead(RIGHT_MOTOR_CURRENT)-currentOffset)*currentFactor;
+   leftMotorCurrent = (analogRead(LEFT_MOTOR_CURRENT)-currentOffset)*currentFactor;
    
-   rightMotorFault = digitalRead(RightMotorFault);
-   leftMotorFault = digitalRead(LeftMotorFault);
+   rightMotorFault = digitalRead(RIGHT_MOTOR_FAULT);
+   leftMotorFault = digitalRead(LEFT_MOTOR_FAULT);
 
    return;
 }
@@ -495,25 +477,25 @@ void loop() {
 
             if (setSpeed != 0){
               //Set the Motor Direction
-              digitalWrite(RightMotorDirection, rightDirection);
-              digitalWrite(LeftMotorDirection, leftDirection);
+              digitalWrite(RIGHT_MOTOR_DIR, rightDirection);
+              digitalWrite(LEFT_MOTOR_DIR, leftDirection);
   
               //Disable Electrical Brake
-              digitalWrite(RightMotorSleep, 1);
-              digitalWrite(LeftMotorSleep, 1);
+              digitalWrite(RIGHT_MOTOR_SLEEP, 1);
+              digitalWrite(LEFT_MOTOR_SLEEP, 1);
    
               //Connect motor power supply
-              digitalWrite(RightMotorEnergise, 0);
-              digitalWrite(LeftMotorEnergise, 0);
+              digitalWrite(RIGHT_MOTOR_ENERGISE, 0);
+              digitalWrite(LEFT_MOTOR_ENERGISE, 0);
                  
               //Disable Brakes
-              digitalWrite(MotorBrakes, 1);
+              digitalWrite(MOTOR_BRAKES, 1);
 
               //Activate Warning Light
-              digitalWrite(WarningLight, 1);
+              digitalWrite(WARNING_LIGHT, 1);
 
-              analogWrite(RightMotorSpeed, rightMotorSpeed);
-              analogWrite(LeftMotorSpeed, leftMotorSpeed);
+              analogWrite(RIGHT_MOTOR_SPEED, rightMotorSpeed);
+              analogWrite(LEFT_MOTOR_SPEED, leftMotorSpeed);
             
               status = true;
             }

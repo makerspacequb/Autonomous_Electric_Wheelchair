@@ -19,7 +19,7 @@
 #define RIGHT_MOTOR_CURRENT 1 //CS Pin on Board
 
 #define RIGHT_MOTOR_SPEED 8 //PWM Input on Board
-#define RIGHT_MOTOR_TIMER TCCR4B //PWM Timer Register
+#define RIGHT_MOTOR_TIMER TCCR4B
 
 #define RIGHT_ENCODER_A 18
 #define RIGHT_ENCODER_B 19
@@ -43,6 +43,7 @@
 #define WARNING_LIGHT 53 //Relay to apply mechanical brake
 #define VOLTAGE_SENSOR 0  //Voltage Sensor
 #define ESTOP 2
+#define RESET 42
 #define ESTOP_POWER 3
 
 #endif

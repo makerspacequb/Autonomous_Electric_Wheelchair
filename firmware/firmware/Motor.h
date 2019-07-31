@@ -36,7 +36,7 @@ class Motor{
     void sleep(bool state);
     
     //PRIVATE - Pin Definitions
-    int iSleepPin, iFaultPin, speedPin, dirPin, currentPin, energisePin;
+    int iSleepPin, iFaultPin, speedPin, pwmScaler, dirPin, currentPin, energisePin;
 
     //PRIVATE - Other Variables
     volatile bool stopped,manualControl;
@@ -53,7 +53,7 @@ class Motor{
     double cumulativeError,lastError;
 };
 
-Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int currentPin, int energisePin){ 
+Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int pwmScaler, int dirPin, int currentPin, int energisePin){ 
   this->iSleepPin = iSleepPin;
   this->iFaultPin = iFaultPin;
   this->speedPin = speedPin;
@@ -61,6 +61,7 @@ Motor::Motor(int iSleepPin, int iFaultPin, int speedPin, int dirPin, int current
   this->currentPin = currentPin;
   this->energisePin = energisePin; 
   this->stopped = true;
+  this->pwmScaler = pwmScaler;
 }
 
 //Needs to be called in setup to initialise pins
@@ -72,6 +73,11 @@ void Motor::begin(){
   pinMode(dirPin,OUTPUT);
   pinMode(iFaultPin,INPUT);
   pinMode(currentPin,INPUT);
+
+  //Adjust PWM Frequency
+  TCCR2B &= ~7; //Clear Bits
+  TCCR2B |= pwmScaler;
+  
   //Make sure wheelchair is stopped
   hardStop();
   distanceTravelled = 0.0;
@@ -129,8 +135,8 @@ void Motor::adjustSpeed(int speed){
     //Write the Pins
     energise(true);
     sleep(false);
-    digitalWrite(speedPin,motorSpeed);
     digitalWrite(dirPin,motorDirection);
+    analogueWrite(speedPin,motorSpeed);
     stopped = false;
   }
 }
