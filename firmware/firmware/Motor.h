@@ -11,7 +11,7 @@ class Motor{
     void update(unsigned int elapsedMicros,int pulses);
     void hardStop(void);
     void softStop(void);
-    double determineSpeed(double distance,unsigned int elapsedMicros);
+    float determineSpeed(float distance,unsigned int elapsedMicros);
     //PUBLIC - Getters
     bool getMoveState(void);
     double getDistance(void);
@@ -42,8 +42,9 @@ class Motor{
 
     //PRIVATE - Other Variables
     volatile bool stopped,manualControl;
-    double encoderMultiplier,distanceTravelled,actualSpeed;
-    volatile int desiredMovement,accellerationDelay;
+    double encoderMultiplier,distanceTravelled;
+    volatile int desiredMovement;
+    float accelIncrement;
     volatile bool fault;
     volatile float current,accelRate,desiredSpeed;
     volatile uint8_t *timerPort;
@@ -81,6 +82,9 @@ void Motor::begin(){
   //Adjust PWM Frequency
   *timerPort &= ~7; //Clear Bits
   *timerPort |= pwmScaler;
+
+  goalSpeed = 0.00;
+  topSpeed = 0.00;
   
   //Calculate Distance Constant
   encoderMultiplier = (ENCODER_DIAMETER*PI)/PULSES_PER_REV;
@@ -92,9 +96,9 @@ void Motor::begin(){
 
 void Motor::update(unsigned int elapsedMicros,int pulses){
   fault = getFaultState();
-  double distance = calculateDistance(pulses);
+  float distance = calculateDistance(pulses);
   distanceTravelled +=distance;
-  actualSpeed = determineSpeed(distance, elapsedMicros);
+  currentSpeed = determineSpeed(distance, elapsedMicros);
   if(!manualControl){
     updateAccel(elapsedMicros);
     throttle(elapsedMicros);
@@ -102,12 +106,12 @@ void Motor::update(unsigned int elapsedMicros,int pulses){
 }
 
 void Motor::updateAccel(unsigned int elapsedMicros){
-  if(elapsedMicros>accellerationDelay){
+  if(goalSpeed != topSpeed){
     if(goalSpeed < topSpeed){
-      goalSpeed++;
+      goalSpeed += accelIncrement;
     }
     else if(goalSpeed > topSpeed){
-      goalSpeed--;
+      goalSpeed -= accelIncrement;
     }
   }
 }
@@ -124,9 +128,9 @@ void Motor::throttle(int elapsedMicros){
   }
 }
 
-double Motor::determineSpeed(double distance,unsigned int elapsedMicros){
+float Motor::determineSpeed(float distance,unsigned int elapsedMicros){
   //Speed in mm/s 
-  double speed = distance/(elapsedMicros/10000000);
+  float speed = distance/0.05;//(double(elapsedMicros)/10000000);
   return speed;
 }
 
@@ -155,7 +159,8 @@ void Motor::adjustSpeed(int speed){
 }
 
 void Motor::updateAccelParams(){
-  accellerationDelay = 1/accelRate;
+  accelIncrement = accelRate*(INTERRUPT_TIME/1000000);
+  //decelDistance = topSpeed
 }
 
 void Motor::setAccelRate(float rate){
@@ -184,7 +189,7 @@ void Motor::setSpeed(float newSpeed){
 //PUBLIC - SETTER
 void Motor::moveMetricSpeed(float speed){
   manualControl = false;
-  goalSpeed = speed;
+  topSpeed = speed;
 }
 
 //PUBLIC - SETTER

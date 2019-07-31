@@ -19,8 +19,8 @@ String instruction[MAX_PARAMS] = {};
 int instChar,instIndex = 0;
 
 //Declare Motor objects
-Motor leftMotor = Motor(LEFT_MOTOR_SLEEP, LEFT_MOTOR_FAULT, LEFT_MOTOR_SPEED, PWM_SCALER, LEFT_MOTOR_TIMER, LEFT_MOTOR_DIR, LEFT_MOTOR_CURRENT, LEFT_MOTOR_ENERGISE);
-Motor rightMotor = Motor(RIGHT_MOTOR_SLEEP, RIGHT_MOTOR_FAULT, RIGHT_MOTOR_SPEED, PWM_SCALER, RIGHT_MOTOR_TIMER, RIGHT_MOTOR_DIR, RIGHT_MOTOR_CURRENT, RIGHT_MOTOR_ENERGISE);
+Motor leftMotor = Motor(LEFT_MOTOR_SLEEP, LEFT_MOTOR_FAULT, LEFT_MOTOR_SPEED, PWM_SCALER, &LEFT_MOTOR_TIMER, LEFT_MOTOR_DIR, LEFT_MOTOR_CURRENT, LEFT_MOTOR_ENERGISE);
+Motor rightMotor = Motor(RIGHT_MOTOR_SLEEP, RIGHT_MOTOR_FAULT, RIGHT_MOTOR_SPEED, PWM_SCALER, &RIGHT_MOTOR_TIMER, RIGHT_MOTOR_DIR, RIGHT_MOTOR_CURRENT, RIGHT_MOTOR_ENERGISE);
 
 //Iniitialise Encoder Variables
 volatile int leftPulses = 0;
@@ -54,7 +54,11 @@ void leftEncoderPulse() {
 //------------------------------------------------------------------------------------------------------------------
 //RESET FUNCTION
 //------------------------------------------------------------------------------------------------------------------
-void(* reset) (void) = 0;
+void reset(void){ 
+  WDTCSR = (1 << WDE) | (1 << WDCE) ;
+  WDTCSR = (1 << WDE);
+  for (;;);
+}
 
 //------------------------------------------------------------------------------------------------------------------
 //TIMER INTERUPT ROUTINE
@@ -98,13 +102,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(RIGHT_ENCODER_B), rightEncoderPulse, RISING);
   attachInterrupt(digitalPinToInterrupt(LEFT_ENCODER_A), leftEncoderPulse, RISING);
   attachInterrupt(digitalPinToInterrupt(LEFT_ENCODER_B), leftEncoderPulse, RISING);
-
-  //Set Hardware Interupt for EStop
-  pinMode(ESTOP_POWER, OUTPUT);
-  digitalWrite(ESTOP_POWER,HIGH);
-  pinMode(ESTOP, INPUT);
-  attachInterrupt(digitalPinToInterrupt(ESTOP), eStop, LOW);
-
+  
   //Setup Brakes and Light
   pinMode(WARNING_LIGHT,OUTPUT);
   pinMode(MOTOR_BRAKES,OUTPUT);
@@ -116,6 +114,12 @@ void setup() {
   Timer1.attachInterrupt(interrupt);
   Timer1.initialize(INTERRUPT_TIME);
   Timer1.start();
+
+  //Set Hardware Interupt for EStop
+  pinMode(ESTOP_POWER,OUTPUT);
+  digitalWrite(ESTOP_POWER,HIGH);
+  pinMode(ESTOP,INPUT);
+  attachInterrupt(digitalPinToInterrupt(ESTOP), eStop, FALLING);
 
   Serial.println("INFO: Setup Complete.");
 }
@@ -182,61 +186,76 @@ void readSerial(){
 void executeInstruction(){
   //check first byte
   switch(instruction[0].charAt(0)){
-    case 's': 
-      if(instruction[1].charAt(0) == 'l'){
-        leftMotor.moveMetricSpeed(instruction[2].toFloat());
-        Serial.print("INFO: Left motor speed set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s.");
+    case 's':
+      if(!eStopActivated){
+        if(instruction[1].charAt(0) == 'l'){
+          leftMotor.moveMetricSpeed(instruction[2].toFloat());
+          Serial.print("INFO: Left motor speed set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s.");
+        }
+        else if(instruction[1].charAt(0) == 'r'){
+          rightMotor.moveMetricSpeed(instruction[2].toFloat());
+          Serial.print("INFO: Right motor speed set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s.");
+        }
+        else if(instruction[1].charAt(0) == 'b'){
+          leftMotor.setSpeed(instruction[2].toFloat());
+          rightMotor.setSpeed(instruction[2].toFloat());
+          Serial.print("INFO: Base motor speed set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s.");
+        }
       }
-      else if(instruction[1].charAt(0) == 'r'){
-        rightMotor.moveMetricSpeed(instruction[2].toFloat());
-        Serial.print("INFO: Right motor speed set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s.");
-      }
-      else if(instruction[1].charAt(0) == 'b'){
-        leftMotor.setSpeed(instruction[2].toFloat());
-        rightMotor.setSpeed(instruction[2].toFloat());
-        Serial.print("INFO: Base motor speed set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s.");
+      else{
+         Serial.println("ERROR: Emergency Stop Pressed. Reset to continue.");
       }
       break;
-    case 'z': 
-      if(instruction[1].charAt(0) == 'l'){
-        leftMotor.setAccelRate(instruction[2].toFloat());
-        Serial.print("INFO: Left motor accelleration set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s^2.");
+    case 'z':
+      if(!eStopActivated){
+        if(instruction[1].charAt(0) == 'l'){
+          leftMotor.setAccelRate(instruction[2].toFloat());
+          Serial.print("INFO: Left motor accelleration set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s^2.");
+        }
+        else if(instruction[1].charAt(0) == 'r'){
+          rightMotor.setAccelRate(instruction[2].toFloat());
+          Serial.print("INFO: Right motor accelleration set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s^2.");
+        }
+        else if(instruction[1].charAt(0) == 'b'){
+          leftMotor.setAccelRate(instruction[2].toFloat());
+          rightMotor.setAccelRate(instruction[2].toFloat());
+          Serial.print("INFO: Base motor accelleration set to ");
+          Serial.print(instruction[2]);
+          Serial.println("mm/s^2.");
+        }
       }
-      else if(instruction[1].charAt(0) == 'r'){
-        rightMotor.setAccelRate(instruction[2].toFloat());
-        Serial.print("INFO: Right motor accelleration set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s^2.");
-      }
-      else if(instruction[1].charAt(0) == 'b'){
-        leftMotor.setAccelRate(instruction[2].toFloat());
-        rightMotor.setAccelRate(instruction[2].toFloat());
-        Serial.print("INFO: Base motor accelleration set to ");
-        Serial.print(instruction[2]);
-        Serial.println("mm/s^2.");
+      else{
+        Serial.println("ERROR: Emergency Stop Pressed. Reset to continue.");  
       }
       break;
     case 't':
-      brakes(false);
-      if(instruction[1].charAt(0) == 'l'){
-        leftMotor.moveArbitarySpeed(instruction[2].toInt());
-        Serial.print("INFO: Left motor speed throttled to ");
-        Serial.print(instruction[2]);
-        Serial.println(".");
+      if(!eStopActivated){
+        brakes(false);
+        if(instruction[1].charAt(0) == 'l'){
+          leftMotor.moveArbitarySpeed(instruction[2].toInt());
+          Serial.print("INFO: Left motor speed throttled to ");
+          Serial.print(instruction[2]);
+          Serial.println(".");
+        }
+        else if(instruction[1].charAt(0) == 'r'){
+          rightMotor.moveArbitarySpeed(instruction[2].toInt());
+          Serial.print("INFO: Right motor speed throttled to ");
+          Serial.print(instruction[2]);
+          Serial.println(".");
+        }
       }
-      else if(instruction[1].charAt(0) == 'r'){
-        rightMotor.moveArbitarySpeed(instruction[2].toInt());
-        Serial.print("INFO: Right motor speed throttled to ");
-        Serial.print(instruction[2]);
-        Serial.println(".");
+      else{
+        Serial.println("ERROR: Emergency Stop Pressed. Reset to continue.");
       }
       break;
     case 'i':
@@ -251,8 +270,13 @@ void executeInstruction(){
       eStop();
       break;
     case 'm':
-      Serial.print("INFO: Moving wheelchair as defined."); 
-      move(instruction[2].toFloat(),instruction[3].toFloat()); 
+      if(!eStopActivated){
+        Serial.print("INFO: Moving wheelchair as defined."); 
+        move(instruction[2].toFloat(),instruction[3].toFloat()); 
+      }
+      else{
+         Serial.println("ERROR: Emergency Stop Pressed. Reset to continue.");  
+      }
       break;
     default: 
       Serial.println("WARNING: Command not found");

@@ -21,8 +21,8 @@
 #define RIGHT_MOTOR_SPEED 8 //PWM Input on Board
 #define RIGHT_MOTOR_TIMER TCCR4B //PWM Timer Register
 
-#define RIGHT_ENCODER_A 18
-#define RIGHT_ENCODER_B 19
+#define RIGHT_ENCODER_A 19
+#define RIGHT_ENCODER_B 18
 
 //Left Motor
 #define LEFT_MOTOR_DIR 26 //DIR Input on Board
