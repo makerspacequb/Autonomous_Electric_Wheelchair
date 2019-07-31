@@ -46,7 +46,7 @@ class Motor{
     volatile int desiredMovement;
     float accelIncrement;
     volatile bool fault;
-    volatile float current,accelRate,desiredSpeed;
+    volatile float current,accelRate;
     volatile uint8_t *timerPort;
 
     //PRIVATE - Speed Variables
@@ -228,13 +228,15 @@ double Motor::getDistance(void){
 }
 //PUBLIC - Action
 void Motor::hardStop(void){
+  goalSpeed = 0.0;
+  topSpeed = 0.0;
   adjustSpeed(0);
   energise(false);
   }
 
 //PUBLIC - Action
 void Motor::softStop(void){
-  this->desiredSpeed = 0.0;
+  topSpeed = 0.0;
   }
 
 //PRIVATE - Setter
