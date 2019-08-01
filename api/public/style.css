@@ -13,7 +13,19 @@
 	width: 180px;
 	font-size: 1vw;
 	font-family: helvetica, sans-serif;
-	background: #42d4f4;
+	background: #ff6666;
+}
+
+#joystick{
+	margin: auto;
+	overflow: hidden;
+	width: 100%;
+	height: 400px;
+	font-size: 1vw;
+	font-family: helvetica, sans-serif;
+	background: #ffcccc;
+	-webkit-user-select	: none;
+	-moz-user-select	: none;
 }
 
 table {
@@ -24,13 +36,13 @@ table {
   }
   
 th {
-	border: 1px solid #42d4f4;
+	border: 1px solid #ff6666;
 	text-align: left;
 	padding: 6px;
   }
 
 td {
-	border: 1px solid #42d4f4;
+	border: 1px solid #ff6666;
 	text-align: left;
 	padding: 4px;
   }
@@ -41,7 +53,8 @@ code {
   }
 
 body {
-	width:600px;
+	width: 100%;
+	max-width:600px;
 	margin:0 auto;
 	font-family: helvetica, sans-serif;
 	font-size: 1vw;
@@ -70,7 +83,7 @@ input[type=text] {
 	border-radius: 8px;
 	padding: 5px;
 	margin: auto;
-	border:1px solid #42d4f4;
+	border:1px solid #ff6666;
 	width:60%;
 	font-size: 1vw;
 	font-family: helvetica, sans-serif;

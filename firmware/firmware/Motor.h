@@ -99,7 +99,7 @@ void Motor::update(unsigned int elapsedMicros,int pulses){
   float distance = calculateDistance(pulses);
   distanceTravelled +=distance;
   currentSpeed = determineSpeed(distance, elapsedMicros);
-  if(!manualControl){
+  if((!manualControl)&&(!stopped)){
     updateAccel(elapsedMicros);
     throttle(elapsedMicros);
   }
@@ -183,7 +183,7 @@ void Motor::energise(bool state){
 //PUBLIC - SETTER
 void Motor::setSpeed(float newSpeed){
   manualControl = false;
-  this->desiredSpeed = newSpeed;
+  this->topSpeed = newSpeed;
 }
 
 //PUBLIC - SETTER

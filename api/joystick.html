@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>Robotic Arm API</title>
+    <link rel="icon" type="image/ico" href="public/favicon.ico" sizes="16x16">
+    <link rel="stylesheet" href="public/style.css">
+</head>
+        
+<body>
+
+    <img class="center" src="public/logo.png" width="150">
+
+    <h1>Wheelchair Joystick Control</h1>
+    
+    <div id="joystick"></div>
+
+    <h1>Status</h1>
+
+    <p>Left Wheel Speed: <b id="debug1">--.-</b>mm/s</p>
+    <p>Right Wheel Speed: <b id="debug2">--.-</b>mm/s</p>
+    <p>System Voltage: <b id="debug3">--.-</b>V</p>
+
+<script src="public/jquery.min.js"></script>
+<script src="public/virtualjoystick.js"></script>
+
+<script>
+    var joystick	= new VirtualJoystick({
+		container	: document.getElementById('joystick'),
+		mouseSupport	: true,
+        stationaryBase: true,
+        baseX: 200,
+        baseY: 300,
+		limitStickTravel: true,
+		stickRadius: 200,
+	    });
+
+	setInterval(function(){
+		var outputEl	= document.getElementById('debug1');
+		outputEl.innerHTML	= '<b>Result:</b> '
+			+ ' dx:'+joystick.deltaX()
+		    + ' dy:'+joystick.deltaY()
+	}, 1/4 * 1000);
+
+</script>
+
+<script>
+    
+    function sendData(data){ 
+        var command = "sendData?="+data
+        $.ajax({
+            type: "GET",
+            url: command,
+            datatype: "text",
+            success: function(status) {
+                //Print Data to console
+                console.log(status);
+            }
+        });
+        return status;
+    }    
+
+    /*setInterval(function(){
+        
+        $.ajax({
+            type: "GET",
+            url: "getLatestLine",
+            datatype: "text",
+            success: function(message) {
+                
+                console.log(message)
+                //Parse Data
+
+                //Print Status		
+                statusElement = document.getElementById('debug1');
+                statusElement.innerHTML = "DATA HERE";	
+                statusElement = document.getElementById('debug2');
+                statusElement.innerHTML = "DATA HERE";
+                statusElement = document.getElementById('debug3');
+                statusElement.innerHTML = "DATA HERE";
+                counter++;
+            }
+        });
+    }, 1/4 * 1000);
+   */ 
+</script>
+
+</body>
+</html>

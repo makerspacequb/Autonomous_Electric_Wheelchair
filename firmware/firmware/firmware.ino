@@ -106,7 +106,8 @@ void setup() {
   //Setup Brakes and Light
   pinMode(WARNING_LIGHT,OUTPUT);
   pinMode(MOTOR_BRAKES,OUTPUT);
-
+  brakes(true);
+  
   //Setup Voltage Sensor
   pinMode(VOLTAGE_SENSOR, INPUT_PULLUP);
        
@@ -120,6 +121,11 @@ void setup() {
   digitalWrite(ESTOP_POWER,HIGH);
   pinMode(ESTOP,INPUT);
   attachInterrupt(digitalPinToInterrupt(ESTOP), eStop, FALLING);
+
+  //Check EStop State on Startup
+  if(!digitalRead(ESTOP)){
+    eStopActivated = true;
+    }
 
   Serial.println("INFO: Setup Complete.");
 }
@@ -148,12 +154,6 @@ void readSerial(){
       instChar = 0;
       instIndex = 0;
       executeInstruction();
-      Serial.print("PARMA 0:");
-      Serial.print(instruction[0]);
-      Serial.print("PARMA 1:");
-      Serial.print(instruction[1]);
-      Serial.print("PARMA 2:");
-      Serial.println(instruction[2]);
     }
     //add to instruction string
     else {
@@ -164,8 +164,6 @@ void readSerial(){
         Serial.println("ERROR: Too many instruction variables passed.");
       }
       else if(instChar >= MAX_PARAM_LENGTH){
-        Serial.print("DEBUG: ");
-        Serial.println(instChar);
         Serial.println("ERROR: Instruction variable too long.");
       }
       else if(nextChar == ','){
