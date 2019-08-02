@@ -16,7 +16,7 @@
 #define RIGHT_MOTOR_ENERGISE 24 //Relay Isolating Supply to Right Motor
 
 #define RIGHT_MOTOR_FAULT 25 //FLT Pin on Board
-#define RIGHT_MOTOR_CURRENT A1 //CS Pin on Board
+#define RIGHT_MOTOR_CURRENT A3 //CS Pin on Board
 
 #define RIGHT_MOTOR_SPEED 8 //PWM Input on Board
 #define RIGHT_MOTOR_TIMER TCCR4B //PWM Timer Register
@@ -30,7 +30,7 @@
 #define LEFT_MOTOR_ENERGISE 28  //Relay Isolating Supply to Left Motor
 
 #define LEFT_MOTOR_FAULT 29  //FLT Pin on Board
-#define LEFT_MOTOR_CURRENT A2  //CS Pin on Board
+#define LEFT_MOTOR_CURRENT A4  //CS Pin on Board
 
 #define LEFT_MOTOR_SPEED 9 //PWM Input on Board
 #define LEFT_MOTOR_TIMER TCCR2B //PWM Timer Register
