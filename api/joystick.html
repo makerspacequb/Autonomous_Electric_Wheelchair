@@ -19,9 +19,9 @@
 
     <h1>Status</h1>
 
-    <p>Left Wheel Speed: <b id="debug1">--.-</b>mm/s</p>
-    <p>Right Wheel Speed: <b id="debug2">--.-</b>mm/s</p>
-    <p>System Voltage: <b id="debug3">--.-</b>V</p>
+    <p>Left Wheel Speed: <b id="leftWheel">--.-</b>%</p>
+    <p>Right Wheel Speed: <b id="rightWheel">--.-</b>%</p>
+    <p>Debug Data: <b id="debug">No Data.</b></p>
 
 <script src="public/jquery.min.js"></script>
 <script src="public/virtualjoystick.js"></script>
@@ -30,61 +30,39 @@
     var joystick	= new VirtualJoystick({
 		container	: document.getElementById('joystick'),
 		mouseSupport	: true,
-        stationaryBase: true,
+        stationaryBase: false,
         baseX: 200,
         baseY: 300,
 		limitStickTravel: true,
 		stickRadius: 200,
 	    });
-
-	setInterval(function(){
-		var outputEl	= document.getElementById('debug1');
-		outputEl.innerHTML	= '<b>Result:</b> '
-			+ ' dx:'+joystick.deltaX()
-		    + ' dy:'+joystick.deltaY()
-	}, 1/4 * 1000);
-
 </script>
 
 <script>
-    
-    function sendData(data){ 
-        var command = "sendData?="+data
-        $.ajax({
+    setInterval(function(){
+        var baseSpeed = (joystick.deltaY()/200)*255;
+        var angleFactor = 1/(joystick.deltaX()/200); 
+        var leftValue = Math.round(baseSpeed*angleFactor)
+	    var rightValue = -Math.round(baseSpeed*angleFactor)
+        var wheels = ["send?command=t,l,".concat(leftValue),"send?command=t,r,".concat(rightValue)];
+        
+        for (var i in wheels){
+            $.ajax({
             type: "GET",
-            url: command,
+            url: wheels[i],
             datatype: "text",
             success: function(status) {
-                //Print Data to console
-                console.log(status);
-            }
-        });
-        return status;
-    }    
-
-    /*setInterval(function(){
-        
-        $.ajax({
-            type: "GET",
-            url: "getLatestLine",
-            datatype: "text",
-            success: function(message) {
-                
-                console.log(message)
-                //Parse Data
-
-                //Print Status		
-                statusElement = document.getElementById('debug1');
-                statusElement.innerHTML = "DATA HERE";	
-                statusElement = document.getElementById('debug2');
-                statusElement.innerHTML = "DATA HERE";
-                statusElement = document.getElementById('debug3');
-                statusElement.innerHTML = "DATA HERE";
-                counter++;
-            }
-        });
-    }, 1/4 * 1000);
-   */ 
+                var wheelSpeed	= document.getElementById('leftWheel');
+                wheelSpeed.innerHTML	= leftValue;//Math.round(((leftValue/255)*100),2);
+                var wheelSpeed	= document.getElementById('rightWheel');
+                wheelSpeed.innerHTML	=  Math.round(((rightWheel/255)*100),2);
+                var systemVoltage = document.getElementById('debug');
+                systemVoltage.innerHTML	= response;
+                console.log(status)
+                }
+            });
+        }
+    }, 1/2 * 1000);
 </script>
 
 </body>

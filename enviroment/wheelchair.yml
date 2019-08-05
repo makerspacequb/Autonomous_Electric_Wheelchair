@@ -1,0 +1,39 @@
+name: wheelchair
+channels:
+  - anaconda
+  - defaults
+dependencies:
+  - asn1crypto=0.24.0=py37_0
+  - ca-certificates=2019.5.15=0
+  - certifi=2019.6.16=py37_0
+  - cffi=1.12.3=py37h7a1dbc1_0
+  - cheroot=6.5.5=py37_0
+  - cherrypy=18.1.1=py37_0
+  - contextlib2=0.5.5=py37_0
+  - cryptography=2.7=py37h7a1dbc1_0
+  - idna=2.8=py37_0
+  - jaraco.functools=2.0=py37_1000
+  - more-itertools=7.0.0=py37_0
+  - openssl=1.1.1=he774522_0
+  - pip=19.1.1=py37_0
+  - portend=2.4=py_0
+  - pycparser=2.19=py37_0
+  - pyopenssl=19.0.0=py37_0
+  - pyserial=3.4=py37_0
+  - python=3.7.3=h8c8aaf0_1
+  - pytz=2019.1=py_0
+  - pywin32=223=py37hfa6e2cd_1
+  - repoze.lru=0.7=py37_0
+  - routes=2.4.1=py37_0
+  - setuptools=41.0.1=py37_0
+  - simplejson=3.16.0=py37hfa6e2cd_0
+  - six=1.12.0=py37_0
+  - sqlite=3.29.0=he774522_0
+  - tempora=1.14.1=py_0
+  - vc=14.1=h21ff451_3
+  - vs2015_runtime=15.5.2=3
+  - wheel=0.33.4=py37_0
+  - wincertstore=0.2=py37_0
+  - zc.lockfile=1.4=py_0
+prefix: C:\Users\makerspacestaff\Anaconda3\envs\wheelchair
+
