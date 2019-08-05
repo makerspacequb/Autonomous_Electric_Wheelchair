@@ -44,6 +44,7 @@ try:
 
             #On startup try to connect to serial
             self.connect()
+            self.startXboxControl()
 
         def loadConfig(self,configFilePath):
             with open(configFilePath) as configFile:  
@@ -76,7 +77,17 @@ try:
                     self.indexPrepared = True
 
         @cherrypy.expose
+        def startXboxControl(self):
+            try:
+                status = "Xbox Controller succesfully connected."
+            except:
+                status = "Xbox Controller coulf not be connected."
+            return status
+
+        @cherrypy.expose
         def joystick(self):
+            self.disconnect()
+            self.connect()
             with open ("api/joystick.html", "r") as webPage:
                 contents=webPage.readlines()
             return contents
@@ -229,6 +240,7 @@ try:
             if(self.connected == False):
                 
                 try:
+                    self.disconnect()
                     #Open Serial Connection
                     self.serial = serial.Serial(
                         port= self.serialPort,
@@ -251,12 +263,12 @@ try:
         @cherrypy.expose
         def disconnect(self):
 
-            status = "INFO: "+self.serverName+" is not connected."
-
-            if(self.connected == True):
+            try:
                 self.serial.close()
                 self.connected = False
                 status = "INFO: "+self.serverName+" disconnected."
+            except:
+                status = "INFO: "+self.serverName+" is not connected."
 
             print(status)
             return status   

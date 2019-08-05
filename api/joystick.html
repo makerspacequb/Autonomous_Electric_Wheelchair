@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <title>Robotic Arm API</title>
+    <title>Wheelchair Base</title>
     <link rel="icon" type="image/ico" href="public/favicon.ico" sizes="16x16">
     <link rel="stylesheet" href="public/style.css">
 </head>
@@ -13,9 +13,12 @@
 
     <img class="center" src="public/logo.png" width="150">
 
-    <h1>Wheelchair Joystick Control</h1>
+    <h1>Wheelchair Base Joystick Control</h1>
     
     <div id="joystick"></div>
+
+    <br>
+    <button class="button" onclick="callCommand('startXboxControl')">Use Xbox Control</button>
 
     <h1>Status</h1>
 
@@ -27,42 +30,47 @@
 <script src="public/virtualjoystick.js"></script>
 
 <script>
+    var joystickRadius = 100;
     var joystick	= new VirtualJoystick({
 		container	: document.getElementById('joystick'),
 		mouseSupport	: true,
-        stationaryBase: false,
+        stationaryBase: true,
         baseX: 200,
         baseY: 300,
 		limitStickTravel: true,
-		stickRadius: 200,
+		stickRadius: joystickRadius,
 	    });
 </script>
 
 <script>
+    var lastLeftValue = 0;
+    var lastRightValue = 0;
     setInterval(function(){
-        var baseSpeed = (joystick.deltaY()/200)*255;
-        var angleFactor = 1/(joystick.deltaX()/200); 
-        var leftValue = Math.round(baseSpeed*angleFactor)
-	    var rightValue = -Math.round(baseSpeed*angleFactor)
-        var wheels = ["send?command=t,l,".concat(leftValue),"send?command=t,r,".concat(rightValue)];
+        var baseSpeed = (-joystick.deltaY()/joystickRadius)*255;
+        var angleFactor = (-joystick.deltaX()/joystickRadius)*255; 
+        var leftValue = Math.ceil((baseSpeed-angleFactor)/10)*10;
+        var rightValue = Math.ceil((baseSpeed+angleFactor)/10)*10;
         
-        for (var i in wheels){
-            $.ajax({
-            type: "GET",
-            url: wheels[i],
-            datatype: "text",
-            success: function(status) {
-                var wheelSpeed	= document.getElementById('leftWheel');
-                wheelSpeed.innerHTML	= leftValue;//Math.round(((leftValue/255)*100),2);
-                var wheelSpeed	= document.getElementById('rightWheel');
-                wheelSpeed.innerHTML	=  Math.round(((rightWheel/255)*100),2);
-                var systemVoltage = document.getElementById('debug');
-                systemVoltage.innerHTML	= response;
-                console.log(status)
-                }
-            });
+        if((lastLeftValue != leftValue)||(lastRightValue != rightValue)){
+            var wheels = ["send?command=t,l,".concat(leftValue),"send?command=t,r,".concat(rightValue)];
+            for (var i in wheels){
+                $.ajax({
+                type: "GET",
+                url: wheels[i],
+                datatype: "text",
+                success: function(status) {
+                    var wheelSpeed	= document.getElementById('leftWheel');
+                    wheelSpeed.innerHTML	= Math.round(((leftValue/255)*100),2);
+                    var wheelSpeed	= document.getElementById('rightWheel');
+                    wheelSpeed.innerHTML	=  Math.round(((rightValue/255)*100),2);
+                    var systemVoltage = document.getElementById('debug');
+                    systemVoltage.innerHTML	= status;
+                    console.log(wheels[i])
+                    }
+                });
+            }
         }
-    }, 1/2 * 1000);
+    }, 1/4 * 1000);
 </script>
 
 </body>
