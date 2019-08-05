@@ -46,7 +46,7 @@ if __name__ == '__main__':
     settings = json.load(settingsFile)
     settingsFile.close()
 
-    print("INFO: Installing pyapi")
+    print("INFO: Installing "+settings["serverName"])
     print("INFO: Getting dependencies for operation")
     getDependencies()
     print("INFO: Setting up Raspberry Pi to run pyapi on startup")
