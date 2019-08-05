@@ -10,5 +10,5 @@ if __name__ == '__main__':
     
     print("Starting Wheelchair API")
     cwd = os.getcwd()
-    mainPath = cwd+"/main.py"
+    mainPath = cwd+"/api/main.py"
     os.system("sudo python3 "+mainPath)
