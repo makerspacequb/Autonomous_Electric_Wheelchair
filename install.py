@@ -21,7 +21,7 @@ def setupPythonStartup():
     startupFile = "/etc/rc.local"
     startupFileContents = None
     cdCommand ="cd "+str(cwd)
-    startCommand="sudo python3 "+str(cwd)+"/api/start.py"
+    startCommand="sudo python3 "+str(cwd)+"/api/startup.py"
         
     with open(startupFile, 'r') as file:
         startupFileContents = file.readlines()
