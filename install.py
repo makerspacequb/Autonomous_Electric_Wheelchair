@@ -6,7 +6,7 @@
 
 import os
 import json
-settingFilePath = "settings.json"
+settingFilePath = "api/settings.json"
 
 def getDependencies():
     #Install Dependencies
