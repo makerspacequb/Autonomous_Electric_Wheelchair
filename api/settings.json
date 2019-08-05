@@ -1,7 +1,7 @@
 {
     "serverName":"Wheelchair Base",
     "serverPort":80,
-    "serialPort":"COM6",
+    "serialPort":"/dev/ttyACM0",
     "baudrate":115200,
     "serialMonitorLines":20,
     "hostname":"wheelchair",
