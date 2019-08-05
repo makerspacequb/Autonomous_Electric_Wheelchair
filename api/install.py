@@ -47,7 +47,6 @@ if __name__ == '__main__':
     settingsFile.close()
 
     print("INFO: Installing pyapi")
-    addInstallDirectory()
     print("INFO: Getting dependencies for operation")
     getDependencies()
     print("INFO: Setting up Raspberry Pi to run pyapi on startup")
