@@ -13,11 +13,29 @@
     <a href="index">
         <img border="0" alt="QLab Logo" src="public/logo.png" width="180">
     </a>
-    
+
     <h1>Wheelchair Base Joystick Control</h1>
     
-    <div id="joystick"></div>
-
+    <div id="joystick">
+        <table>
+            <tr>
+                <td id="grid"></td>
+                <td id="grid"><img border="0" alt="Up" src="public/arrow.png" width="80%" style="transform:rotate(-90deg);" onclick="moveForward()"></td>
+                <td id="grid"></td>
+            </tr>
+            <tr>
+                <td id="grid"><img border="0" alt="Left" src="public/arrow.png" width="80%" style="transform:rotate(180deg);" onclick="moveLeft()"></td>
+                <td id="grid"><img border="0" alt="Stop" src="public/cross.png" width="80%" onclick="stop()"></td>
+                <td id="grid"><img border="0" alt="Right" src="public/arrow.png" width="80%" onclick="moveRight()"></td>
+            </tr>
+            <tr>
+                <td id="grid"></td>
+                <td id="grid"><img border="0" alt="Down" src="public/arrow.png" width="80%" style="transform:rotate(90deg);" onclick="moveBackwards()"></td>
+                <td id="grid"></td>
+            </tr>
+        </table>  
+    </div>
+ 
     <br>
     <button class="button" onclick="callCommand('startXboxControl')">Use Xbox Control</button>
 
@@ -27,51 +45,106 @@
     <p>Right Wheel Speed: <b id="rightWheel">--.-</b>%</p>
     <p>Debug Data: <b id="debug">No Data.</b></p>
 
+    <p>
+        &copy;Copyright, QLab, Queen's University Belfast, 2019
+    </p>
 <script src="public/jquery.min.js"></script>
-<script src="public/virtualjoystick.js"></script>
 
 <script>
-    var joystickRadius = 100;
-    var joystick	= new VirtualJoystick({
-		container	: document.getElementById('joystick'),
-		mouseSupport	: true,
-        stationaryBase: true,
-        baseX: 200,
-        baseY: 300,
-		limitStickTravel: true,
-		stickRadius: joystickRadius,
-	    });
-</script>
 
-<script>
-    var lastLeftValue = 0;
-    var lastRightValue = 0;
-    setInterval(function(){
-        var baseSpeed = (-joystick.deltaY()/joystickRadius)*255;
-        var angleFactor = (-joystick.deltaX()/joystickRadius)*255; 
-        var leftValue = Math.ceil((baseSpeed-angleFactor)/10)*10;
-        var rightValue = Math.ceil((baseSpeed+angleFactor)/10)*10;
-        
-        if((lastLeftValue != leftValue)||(lastRightValue != rightValue)){
-            var wheels = ["send?command=t,l,".concat(leftValue),"send?command=t,r,".concat(rightValue)];
-            for (var i in wheels){
-                $.ajax({
+    var leftValue = 0;
+    var rightValue = 0;
+
+    async function moveLeft(){
+        leftValue = -50;
+        rightValue = 50;
+        move("send?command=t,l,-50");
+        move("send?command=t,r,50");
+        await sleep(200);
+        leftValue = 1;
+        rightValue = 1;
+        move("send?command=t,l,1");
+        move("send?command=t,r,1");
+    }
+    
+    async function moveRight(){
+        leftValue = 50;
+        rightValue = -50;
+        move("send?command=t,l,50");
+        move("send?command=t,r,-50");
+        await sleep(200);
+        leftValue = 1;
+        rightValue = 1;
+        move("send?command=t,l,1");
+        move("send?command=t,r,1");
+    }
+
+    async function moveForward(){
+        leftValue = 50;
+        rightValue = 50;
+        move("send?command=t,l,50");
+        move("send?command=t,r,50");
+        await sleep(500);
+        leftValue = 1;
+        rightValue = 1;
+        move("send?command=t,l,1");
+        move("send?command=t,r,1");
+    }
+
+    async function moveBackwards(){
+        leftValue = -50;
+        rightValue = -50;
+        move("send?command=t,l,-50");
+        move("send?command=t,r,-50");
+        await sleep(500);
+        leftValue = 1;
+        rightValue = 1;
+        move("send?command=t,l,1");
+        move("send?command=t,r,1");
+    }
+    
+    async function stop(){
+        leftValue = 0;
+        rightValue = 0;
+        move("send?command=t,l,0");
+        move("send?command=t,r,0");
+    }
+
+    function move(command){
+        $.ajax({
+            type: "GET",
+            url: command,
+            datatype: "text",
+            success: function(status) {
+                var wheelSpeed	= document.getElementById('leftWheel');
+                wheelSpeed.innerHTML	= leftValue;
+                var wheelSpeed	= document.getElementById('rightWheel');
+                wheelSpeed.innerHTML	=  rightValue;
+                var statusBox = document.getElementById('debug');
+                statusBox.innerHTML	= status;
+                console.log(status)
+                }
+            });
+        }
+    
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function callCommand(command){   
+            $.ajax({
                 type: "GET",
-                url: wheels[i],
+                url: command,
                 datatype: "text",
                 success: function(status) {
-                    var wheelSpeed	= document.getElementById('leftWheel');
-                    wheelSpeed.innerHTML	= Math.round(((leftValue/255)*100),2);
-                    var wheelSpeed	= document.getElementById('rightWheel');
-                    wheelSpeed.innerHTML	=  Math.round(((rightValue/255)*100),2);
-                    var systemVoltage = document.getElementById('debug');
-                    systemVoltage.innerHTML	= status;
-                    console.log(wheels[i])
-                    }
-                });
-            }
-        }
-    }, 1/4 * 1000);
+                    console.log(status);		
+                    statusElement = document.getElementById('debug');
+                    statusElement.innerHTML = status;
+                }
+            });
+            return status;
+        }    
+    
 </script>
 
 </body>
