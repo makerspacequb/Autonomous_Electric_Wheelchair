@@ -189,30 +189,26 @@ try:
         @cherrypy.expose
         def serialMonitor(self):
             
-            tableContent = ""
-            columns = 0
-            headers = ["Timestamp","Data 1","Data 2","Data 3","Data 4","Data 5","Data 6","Data 7","Data 8"]
-
-            columns = 8 
-        
-            #Get table contents
-            for row in self.serialMonitorData:
-                tableContent += "<tr><td width='30%'>"
-                tableContent += row.replace(",", "</td><td width='70%'>")
-                tableContent += "</td></tr>"
+            headers = ["Timestamp","Data 1","Data 2","Data 3","Data 4"]
 
             #Add Correct number of Headers
-            headerRow = "<tr>"
-            for i in range(0,columns):
-                headerRow += "<th>"+headers[i]+"</th>"
-            headerRow = "</tr>"
+            table =  "<table><tr>"
+            for header in headers:
+                table += "<th>"+header+"</th>"
+            table += "</tr>"
 
-            #Form Table
-            table = "<table>"
-            table += headerRow
-            table += tableContent
+            #Get table contents
+            rows = len(self.serialMonitorData)-1
+            for i in range(rows,0,-1):
+                row = self.serialMonitorData[i]
+                table += "<tr><td width='20%'>"
+                table += row.replace(",", "</td><td width='15%'>",len(headers))
+                if row.count(',') < len(headers):
+                    for i in range(row.count(','),len(headers)-1):
+                        table += "</td><td width='15%'>"
+                table += "</td></tr>"
+    
             table +="</table>"
-
             return table
 
         @cherrypy.expose
