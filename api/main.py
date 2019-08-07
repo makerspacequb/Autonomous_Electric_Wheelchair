@@ -44,6 +44,7 @@ try:
 
             #On startup try to connect to serial
             self.connect()
+            self.startXboxControl()
 
         def loadConfig(self,configFilePath):
             with open(configFilePath) as configFile:  
@@ -76,7 +77,17 @@ try:
                     self.indexPrepared = True
 
         @cherrypy.expose
+        def startXboxControl(self):
+            try:
+                status = "Xbox Controller succesfully connected."
+            except:
+                status = "Xbox Controller coulf not be connected."
+            return status
+
+        @cherrypy.expose
         def joystick(self):
+            self.disconnect()
+            self.connect()
             with open ("api/joystick.html", "r") as webPage:
                 contents=webPage.readlines()
             return contents
@@ -178,30 +189,26 @@ try:
         @cherrypy.expose
         def serialMonitor(self):
             
-            tableContent = ""
-            columns = 0
-            headers = ["Timestamp","Data 1","Data 2","Data 3","Data 4","Data 5","Data 6","Data 7","Data 8"]
-
-            columns = 8 
-        
-            #Get table contents
-            for row in self.serialMonitorData:
-                tableContent += "<tr><td width='30%'>"
-                tableContent += row.replace(",", "</td><td width='70%'>")
-                tableContent += "</td></tr>"
+            headers = ["Timestamp","Data 1","Data 2","Data 3","Data 4"]
 
             #Add Correct number of Headers
-            headerRow = "<tr>"
-            for i in range(0,columns):
-                headerRow += "<th>"+headers[i]+"</th>"
-            headerRow = "</tr>"
+            table =  "<table><tr>"
+            for header in headers:
+                table += "<th>"+header+"</th>"
+            table += "</tr>"
 
-            #Form Table
-            table = "<table>"
-            table += headerRow
-            table += tableContent
+            #Get table contents
+            rows = len(self.serialMonitorData)-1
+            for i in range(rows,0,-1):
+                row = self.serialMonitorData[i]
+                table += "<tr><td width='20%'>"
+                table += row.replace(",", "</td><td width='15%'>",len(headers))
+                if row.count(',') < len(headers):
+                    for i in range(row.count(','),len(headers)-1):
+                        table += "</td><td width='15%'>"
+                table += "</td></tr>"
+    
             table +="</table>"
-
             return table
 
         @cherrypy.expose
@@ -229,6 +236,7 @@ try:
             if(self.connected == False):
                 
                 try:
+                    self.disconnect()
                     #Open Serial Connection
                     self.serial = serial.Serial(
                         port= self.serialPort,
@@ -251,12 +259,12 @@ try:
         @cherrypy.expose
         def disconnect(self):
 
-            status = "INFO: "+self.serverName+" is not connected."
-
-            if(self.connected == True):
+            try:
                 self.serial.close()
                 self.connected = False
                 status = "INFO: "+self.serverName+" disconnected."
+            except:
+                status = "INFO: "+self.serverName+" is not connected."
 
             print(status)
             return status   

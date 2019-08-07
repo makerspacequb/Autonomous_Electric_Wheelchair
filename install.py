@@ -6,7 +6,7 @@
 
 import os
 import json
-settingFilePath = "settings.json"
+settingFilePath = "api/settings.json"
 
 def getDependencies():
     #Install Dependencies
@@ -21,7 +21,7 @@ def setupPythonStartup():
     startupFile = "/etc/rc.local"
     startupFileContents = None
     cdCommand ="cd "+str(cwd)
-    startCommand="sudo python3 "+str(cwd)+"/start.py"
+    startCommand="sudo python3 "+str(cwd)+"/api/startup.py"
         
     with open(startupFile, 'r') as file:
         startupFileContents = file.readlines()
@@ -46,8 +46,7 @@ if __name__ == '__main__':
     settings = json.load(settingsFile)
     settingsFile.close()
 
-    print("INFO: Installing pyapi")
-    addInstallDirectory()
+    print("INFO: Installing "+settings["serverName"])
     print("INFO: Getting dependencies for operation")
     getDependencies()
     print("INFO: Setting up Raspberry Pi to run pyapi on startup")

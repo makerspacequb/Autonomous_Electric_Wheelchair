@@ -20,12 +20,18 @@
 	margin: auto;
 	overflow: hidden;
 	width: 100%;
-	height: 400px;
+	height: 100%;
 	font-size: 1vw;
 	font-family: helvetica, sans-serif;
 	background: #ffcccc;
 	-webkit-user-select	: none;
 	-moz-user-select	: none;
+}
+
+#grid{
+	border: 1px solid #ffcccc;
+	text-align: center;
+	padding: 4px;
 }
 
 table {
