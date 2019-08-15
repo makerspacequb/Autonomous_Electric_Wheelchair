@@ -16,33 +16,31 @@ class Controller:
     deadzone = 0.3
     #COPY: Copyright 2019, All Rights Reserved, Ryan McCartney
 
-    def __init__(self,ipAddress,port,config):
+    def __init__(self,config):
 
         self.logging = True
         self.gamepadConnected = False
-        self.ipAddress = ipAddress
-        self.port = port
         self.gamepadToUse = 0
+        self.deadzone = 0.1
 
         #Create instance of Arm class
-        self.arm = Arm(self.ipAddress,self.port,config)
-        self.arm.reset()
+        self.wheelchair = Wheelchair(config)
+        self.wheelchair.resetSerial()
 
         #Start Pygame
         pygame.init()
         pygame.joystick.init()
 
         #Setup Variables for Buttons
+        self.axisTotal = 5
+        self.axisPositions = [0]*self.axisTotal
         self.buttonTotal = 10
         self.lastButtonState = [0]*self.buttonTotal
+   
+        self.lastLeftSpeed = 0
+        self.lastRightSpeed = 0
+        self.topSpeed = config["topSpeed"]
 
-        #Setup Variables for Axis
-        self.axisTotal = 5
-        self.leftJoint = 0
-        self.rightJoint = 1
-        self.axisPositions = [0]*self.axisTotal
-        self.setSpeed = [0]*self.arm.joints
-    
     #Logging Function
     def log(self, entry):
         
@@ -57,24 +55,17 @@ class Controller:
 
         print(logEntry)
     
-    def mapJoysticks(self):
+    def mapLeftJoystick(self):
         status = True
         try:
             #Capture Button States
             for i in range(0,self.axisTotal):
                 self.axisPositions[i] = self.gamepad.get_axis(i)
-            self.mapJoystick(self.axisPositions[0],self.axisPositions[1],self.leftJoint)
-            self.mapJoystick(self.axisPositions[3],self.axisPositions[4],self.rightJoint)
-
+                self.mapWheelSpeeds(self.axisPositions[0],self.axisPositions[1])
         except:
-            self.log("ERROR: Mapping Axis Error.")
+            self.log("ERROR: Failed to map left joystick.")
             status = False
         return status
-
-    def mapJoystick(self,xAxis,yAxis,joint):
-        joint = joint+joint
-        self.mapJoint(joint,xAxis)
-        self.mapJoint(joint+1,yAxis)
 
     def mapButtons(self):
         buttonState = [0]*self.buttonTotal
@@ -84,46 +75,35 @@ class Controller:
             for i in range(0,self.buttonTotal):
                 buttonState[i] = self.gamepad.get_button(i)
 
-            #A BUTTON - STOP
+            #A BUTTON - RESET
             if(buttonState[0] and (self.lastButtonState[0] == 0)):
-                self.arm.reset()
+                self.wheelchair.resetSerial()
             #B BUTTON - STOP
             if(buttonState[1] and (self.lastButtonState[1] == 0)):
-                self.arm.stop()
-            #Y BUTTON - STANDUP
+                self.wheelchair.eStop()
+            #Y BUTTON - INCREASE SPEED
             if(buttonState[3] and (self.lastButtonState[3] == 0)):
-                self.arm.setDefaults()
-                self.arm.standUp()
-                self.arm.waitToStationary()
-            #X BUTTON - REST
+                if (self.topSpeed+1) > self.wheelchair.maxSpeed:
+                    self.topSpeed = self.wheelchair.maxSpeed
+                else:
+                    self.topSpeed = self.topSpeed + 1
+            #X BUTTON - DECREASE SPEED
             if(buttonState[2] and (self.lastButtonState[2] == 0)):
-                self.arm.setDefaults()
-                self.arm.rest()
-                self.arm.waitToStationary()
+                if (self.topSpeed-1) < 0:
+                    self.topSpeed = 0
+                else:
+                    self.topSpeed = self.topSpeed - 1
             #START BUTTON - CALIBRATE ARM
             if(buttonState[7] and (self.lastButtonState[7] == 0)):
-                self.arm.setDefaults()
-                self.arm.calibrateArm()
-                self.arm.waitToStationary()
+                self.log("INFO: START button pressed.")
             #LEFT THUMB BUTTON - CHANGE JOINT
             if(buttonState[8] and (self.lastButtonState[8] == 0)):
-                if (self.leftJoint + 1) == self.rightJoint:
-                    self.leftJoint += 2
-                elif (self.leftJoint) > 2:
-                    self.leftJoint = 0
-                else:
-                    self.leftJoint += 1
-                self.log("INFO: Joint set "+str(self.leftJoint)+" selected on left joystick.")
+                self.log("INFO: LEFT THUMB button pressed.")
+                self.wheelchair.stop()
             #RIGHT THUMB BUTTON - CHANGE JOINT
             if(buttonState[9] and (self.lastButtonState[9] == 0)):  
-                if (self.rightJoint + 1) == self.leftJoint:
-                    self.rightJoint += 2
-                if (self.rightJoint + 1) > 2:
-                    self.rightJoint = 0
-                else:
-                    self.rightJoint += 1
-                self.log("INFO: Joint set "+str(self.rightJoint)+" selected on right joystick.")
-            
+                self.log("INFO: RIGHT THUMB button pressed.")
+                self.wheelchair.stop()  
             self.lastButtonState = buttonState
         except:
             self.log("ERROR: Mapping Buttons Error.")
@@ -150,40 +130,31 @@ class Controller:
         self.gamepad.init()
         self.log("INFO: Gamepad Connected Succesfully.")
     
-    def mapJoint(self,joint,rawPosition):
+    def mapWheelSpeeds(self,xAxisPos,yAxisPos):
         
         #Converting to Discrete Speed Control
-        rawPosition = round(rawPosition,2)
+        xAxisPos = round(xAxisPos,2)
+        yAxisPos = round(yAxisPos,2)
+        #self.log("STATUS: AXIS "+str(yAxisPos))
+        if (abs(xAxisPos)>self.deadzone) and (abs(yAxisPos)>self.deadzone):
+            mappedLeftSpeed = self.mapToRange(-yAxisPos,-1,1,-self.wheelchair.maxSpeed,self.wheelchair.maxSpeed)
+            mappedRightSpeed = self.mapToRange(-yAxisPos,-1,1,-self.wheelchair.maxSpeed,self.wheelchair.maxSpeed)
+            
+            if mappedLeftSpeed != self.lastLeftSpeed:
+                pass
+                #self.wheelchair.leftThrottle(mappedLeftSpeed)
+            if mappedRightSpeed != self.lastRightSpeed:
+                pass
+                #self.wheelchair.rightThrottle(mappedRightSpeed)
 
-        minSpeed = self.arm.jointMinSpeed[joint]
-        maxSpeed = self.arm.jointMaxSpeed[joint]
-        maxRotation = abs(self.arm.jointMaxRotation[joint])
-
-        #Select Direction
-        if rawPosition > self.deadzone:
-            #Select and Set a Speed
-            mappedSpeed = self.mapToRange(abs(rawPosition),self.deadzone,1,minSpeed,maxSpeed)
-            if mappedSpeed != self.setSpeed[joint]:
-                self.arm.setMinSpeed(joint,mappedSpeed)
-                self.arm.setSpeed(joint,mappedSpeed)
-                self.setSpeed[joint] = mappedSpeed
-                #Move the arm
-                self.arm.moveJointTo(joint,maxRotation)
-        elif rawPosition < -self.deadzone:
-            #Select and Set a Speed
-            mappedSpeed = self.mapToRange(abs(rawPosition),self.deadzone,1,minSpeed,maxSpeed)
-            if mappedSpeed != self.setSpeed[joint]:
-                self.arm.setMinSpeed(joint,mappedSpeed)
-                self.arm.setSpeed(joint,mappedSpeed)
-                #Move the arm
-                self.setSpeed[joint] = mappedSpeed
-                self.arm.moveJointTo(joint,0)
+            self.lastLeftSpeed = mappedLeftSpeed
+            self.lastRightSpeed = mappedRightSpeed
         else:
-            if self.arm.armCalibrated():
-                if self.setSpeed[joint] != 0:
-                    self.arm.setMinSpeed(joint,0)
-                    self.arm.setSpeed(joint,0)
-                    self.setSpeed[joint] = 0
+            #In Deadzone
+            self.wheelchair.softStop()
+            self.lastLeftSpeed = 1
+            self.lastRightSpeed = 1
+
     
     @staticmethod
     def mapToRange(raw,rawMin,rawMax,mapMin,mapMax):

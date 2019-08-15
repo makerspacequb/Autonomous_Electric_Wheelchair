@@ -9,28 +9,25 @@ import json
 import time
 
 status = True
-ip_address = "192.168.0.106"
-port = 80
 
 #Clear Log File
 open('logs/log.txt', 'w').close()
 
-with open('config/config.json') as json_file:  
+with open('config/wheelchair1.json') as json_file:  
     config = json.load(json_file)
 
 #Create instance of Arm class
-control = Controller(ip_address,port,config)
+control = Controller(config)
 
 while 1:
-    while control.arm.connected:
+    while control.wheelchair.connected:
         while control.gamepads > 0:
             control.connectGamepad()
             while status:
                 #Get Current Data
                 status = control.getGamepadData()
                 status = control.mapButtons()
-                status = control.mapJoysticks()
-            
+                status = control.mapLeftJoystick()
         time.sleep(1)
         
     if control.wheelchair.connected == False:

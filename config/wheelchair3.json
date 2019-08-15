@@ -1,0 +1,8 @@
+{
+    "ipAddress":"192.168.0.109",
+    "port":80,
+    "topSpeed":80,
+    "maxSpeed":255,
+    "baseWidth":400,
+    "wheels":2
+}

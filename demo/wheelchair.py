@@ -25,29 +25,26 @@ class Wheelchair:
     logFilePath = "logs/log.txt"
     header = {'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36'}
     
-    def __init__(self,ipAddress,port,config):
+    def __init__(self,config):
 
-        self.joints = 6
         self.logging = True
-        self.baseURL = "http://"+ipAddress+":"+str(self.port)
+        self.stopped = False
+        self.wheels = config["wheels"]
+        self.port = config["port"]
+        self.ipAddress = config["ipAddress"]
+        self.baseURL = "http://"+str(self.ipAddress)+":"+str(self.port)+"/"
         self.error = False
         self.timeout = 2 #Seconds
         self.pollingStatus = False
 
-        #Values loaded from 'config.json'
-        for joint in config["joints"]:
-            self.jointMaxRotation.append(joint["maxRotation"])
-            self.jointMaxSpeed.append(joint["maxSpeed"])
-            self.jointMinSpeed.append(joint["minSpeed"])
-            self.jointPosDefault.append(joint["defaultPosition"])
-            self.jointSpeedDefault.append(joint["defaultSpeed"])
-            self.jointAccelDefault.append(joint["defaultAccel"])
+        self.topSpeed = config["topSpeed"]
+        self.maxSpeed = config["maxSpeed"]
 
-        #Status Flags
-        self.jointPosition = [None]*self.joints
-        self.switchState = [0]*self.joints
-        self.calibrationState = [0]*self.joints
-        self.movementFlag = [0]*self.joints
+        #Status Flags and Telemetry Variables
+        self.movementFlag = [0]*self.wheels
+        self.distance = [0]*self.wheels
+        self.current = [0]*self.wheels
+        self.voltage = 0.0
 
         try:
             self.session = requests.session()
@@ -57,8 +54,6 @@ class Wheelchair:
             self.log("ERROR: Cannot create a session.")
             self.connected = False
 
-        #Open a solver for kinematics
-        self.kin = Kinematic()
         #Start capturing status packets
         self.getStatus()
 
@@ -116,66 +111,47 @@ class Wheelchair:
                 if(status[0].find("STATUS:")!=-1):
                     if(status[0].find("MOVEMENT") != -1):
                         data = status[0].split(",")
-                        self.movementFlag = list(map(int,data[1:]))
-                    elif(status[0].find("CALIBRATION") != -1):
+                        self.movementFlag = data
+                    elif(status[0].find("DISTANCE") != -1):
                         data = status[0].split(",")
-                        self.calibrationState = list(map(int,data[1:]))
-                    elif(status[0].find("POSITION") != -1):
+                        self.distance = data
+                    elif(status[0].find("TELEMETRY") != -1):
                         data = status[0].split(",")
-                        try:
-                            self.jointPosition = list(map(float,data[1:]))
-                        except:
-                            pass
-                    elif(status[0].find("SWITCH") != -1):
-                        data = status[0].split(",")
-                        self.switchState = list(map(int,data[1:]))
+                        self.voltage = data.pop(0)
+                        self.current = data
                     else:
                         self.log("FAILED TO PARSE: "+status[0])
                 elif(status[0] !=""):
-                    self.log(status[0])
-
+                    if self.debug:
+                        self.log(status[0])
             except:     
                 self.log("INFO: Did not receive status response from API.")
         
         self.pollingStatus = False
 
     def leftThrottle(self,speed):
+        self.stopped = False
         if (speed <= 255) and (speed >= -255):
-            command = "t,l,"+int(speed)
+            command = "t,l,"+str(speed)
             self.sendCommand(command)
-            self.log("INFO: Left wheel speed set to "+speed+".")
+            if self.debug:
+                self.log("INFO: Left wheel speed set to "+str(speed)+".")
         else:
             self.log("ERROR: Speed out of range.")
     
     def rightThrottle(self,speed):
+        self.stopped = False
         if (speed <= 255) and (speed >= -255):
-            command = "t,r,"+int(speed)
+            command = "t,r,"+str(speed)
             self.sendCommand(command)
-            self.log("INFO: Right wheel speed set to "+speed+".")
+            if self.debug:
+                self.log("INFO: Right wheel speed set to "+str(speed)+".")
         else:
             self.log("ERROR: Speed out of range.")
 
-    def getPose(self):
-        pose = self.kin.forwardKinematics(self.jointPosition)
-        return pose
-
     def getWheelMovement(self):
-        return self.wheelMovement 
+        return self.movementFlag 
     
-    def getWheel(self,wheel):
-        try:
-            if wheel == "left":
-                wheelID = "l"
-            elif wheel == "right":
-                wheelID = "r"
-            elif wheel == "both":
-                wheelID = "b"
-            else:
-                wheeelID = "error"
-        except:
-            wheeelID = "e"
-        return wheeelID
-
     def setAccel(self,wheel,accel):
         wheelID = self.getWheel(wheel)
         if wheelID != "error":
@@ -188,7 +164,7 @@ class Wheelchair:
         self.sendCommand(command)
         self.log("INFO: Base wheel speed adjusted to "+str(speed,2)+" mm/s.")
     
-    def moveAtSped(self,wheel,speed):
+    def moveAtSpeed(self,wheel,speed):
         wheelID = self.getWheel(wheel)
         if (wheelID == "l") or (wheelID == "r"):
             command = "s"+str(wheelID)+str(speed,2)
@@ -196,6 +172,19 @@ class Wheelchair:
             self.log("INFO: "+str(wheel)+ " wheel speed set to "+str(accel,2)+" mm/s.")
     
     def stop(self):
+        self.leftThrottle(0)
+        self.rightThrottle(0)
+        self.log("INFO: Wheelchair stopped and brakes applied.")
+    
+    def softStop(self):
+        if not self.stopped:
+            self.leftThrottle(1)
+            self.rightThrottle(1)
+            self.stopped = True
+            if self.debug:
+                self.log("INFO: Wheelchair stopped, brakes not applied.")
+    
+    def eStop(self):
         self.sendCommand("q")
         self.log("INFO: Arm Emergency Stopped.")
 
@@ -209,7 +198,7 @@ class Wheelchair:
         if response.content.decode("utf-8"):
             self.log(response.content.decode("utf-8"))
 
-    def reset(self):
+    def resetSerial(self):
         messages = ["disconnect","connect"]
         for message in messages:
             url = self.baseURL + message
@@ -220,7 +209,7 @@ class Wheelchair:
         time.sleep(1.5)
         self.log("INFO: Arm Reset.")
     
-    def eStopReset(self):
+    def resetArduino(self):
         self.sendCommand("r")
         time.sleep(1)
         self.log("INFO: Emergency Stop Latch Reset.")
