@@ -1,4 +1,5 @@
 {
+    "deviceName":"Wheelchair 1",
     "ipAddress":"192.168.0.107",
     "port":80,
     "topSpeed":80,
