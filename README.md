@@ -18,7 +18,7 @@ For use the above dependencies and the follow are requird;
 * pip `pip install pyserial`
 
 ### Hardware Dependencies
-* Arduino MEGA
+* Arduino MEGA 2560
 * RaspberryPi 3
 * Microsoft Kinect V1 (Note that the V2 Kinect Sensor requires USB 3.0 Support)
 * Pololu G2 H-Bridge [Motor Driver](https://www.pololu.com/product/2995) (24v21)  
